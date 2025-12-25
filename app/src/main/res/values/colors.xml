@@ -12,6 +12,7 @@
     <color name="deepblue">#141ea2</color>
     <color name="yellow2">#f9f5d0</color>
     <color name="lightgrey">#dedada</color>
-
-
+    <color name="blue">#2196F3</color>
+    <color name="blue_dark">#1976D2</color>
+    <color name="gray">#F5F5F5</color>
 </resources>

@@ -4,6 +4,7 @@ import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.text.Editable;
@@ -133,7 +134,7 @@ public class SearchActivity extends AppCompatActivity {
         protected List<WordBean> doInBackground(String... params) {
             String word = params[0];
             Call<List<WordApiResponse>> call = RetrofitClient.getInstance()
-                    .getDictionaryApi()
+                    .getBaiduApi()
                     .getWordInfo(word);
             try {
                 Response<List<WordApiResponse>> response = call.execute();
@@ -165,6 +166,11 @@ public class SearchActivity extends AppCompatActivity {
             }
             mDatas.clear();
             if (result != null && !result.isEmpty()) {
+                String currentUser = getCurrentUsername();
+                if (!TextUtils.isEmpty(currentUser)) {
+                    WordHistoryRepository.getInstance(SearchActivity.this)
+                            .saveHistory(currentUser, result.get(0));
+                }
                 mDatas.addAll(result);
                 adapter.notifyDataSetChanged();
             } else {
@@ -173,7 +179,11 @@ public class SearchActivity extends AppCompatActivity {
             }
         }
     }
-
+    // 获取当前登录用户名
+    private String getCurrentUsername() {
+        SharedPreferences sp = getSharedPreferences("user_info", MODE_PRIVATE);
+        return sp.getString("current_username", "");
+    }
     private List<WordBean> convertApiResponseToWordBean(List<WordApiResponse> apiResponses) {
         List<WordBean> wordList = new ArrayList<>();
         for (WordApiResponse apiResponse : apiResponses) {
@@ -224,15 +234,25 @@ public class SearchActivity extends AppCompatActivity {
     }
 
     private String translateToChinese(String text) {
+        if (TextUtils.isEmpty(text)) return "";
+
+        String appid = "你的百度appid";
+        String secretKey = "你的百度密钥";
+        String salt = String.valueOf(System.currentTimeMillis());
+        // 生成签名：MD5(appid+text+salt+secretKey)
+        String sign = MD5Utils.md5(appid + text + salt + secretKey);
+
         try {
-            Call<TranslationResponse> call = TranslationClient.getApi()
-                    .translate(text, "en|zh-CN");
-            Response<TranslationResponse> resp = call.execute();
-            if (resp.isSuccessful() && resp.body() != null && resp.body().getResponseData() != null) {
-                return resp.body().getResponseData().getTranslatedText();
+            Call<BaiduTranslateResponse> call = RetrofitClient.getBaiduApi()
+                    .translate(text, "en", "zh", appid, salt, sign);
+            Response<BaiduTranslateResponse> resp = call.execute();
+            if (resp.isSuccessful() && resp.body() != null
+                    && resp.body().getTransResult() != null
+                    && !resp.body().getTransResult().isEmpty()) {
+                return resp.body().getTransResult().get(0).getDst();
             }
         } catch (IOException e) {
-            // 忽略翻译失败，保持流程顺畅
+            e.printStackTrace();
         }
         return "";
     }
