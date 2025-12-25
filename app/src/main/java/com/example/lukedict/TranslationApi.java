@@ -4,15 +4,16 @@ import retrofit2.Call;
 import retrofit2.http.GET;
 import retrofit2.http.Query;
 
-/**
- * 使用 MyMemory 免费翻译 API 将英文翻译为中文（无需密钥）。
- * 示例：https://api.mymemory.translated.net/get?q=hello&langpair=en|zh-CN
- */
 public interface TranslationApi {
-    @GET("get")
+    // 百度翻译API接口
+    @GET("api/trans/vip/translate")
     Call<TranslationResponse> translate(
-            @Query("q") String text,
-            @Query("langpair") String langPair
+            @Query("q") String query,
+            @Query("from") String from,
+            @Query("to") String to,
+            @Query("appid") String appid,
+            @Query("salt") String salt,
+            @Query("sign") String sign
     );
 }
 

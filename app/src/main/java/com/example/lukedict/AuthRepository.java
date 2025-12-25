@@ -3,30 +3,22 @@ package com.example.lukedict;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
-import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
-import android.text.TextUtils;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * 封装登录/注册相关的数据库操作。
- * 采用单例模式，确保数据库访问的一致性。
+ * 用户数据仓库：处理用户表的增删改查
  */
 public class AuthRepository {
     private static AuthRepository instance;
     private final UserDatabaseHelper dbHelper;
-    private final Context context;
 
-    /**
-     * 私有构造函数，单例模式
-     */
     private AuthRepository(Context context) {
-        this.context = context.getApplicationContext();
-        this.dbHelper = new UserDatabaseHelper(this.context);
+        dbHelper = new UserDatabaseHelper(context.getApplicationContext());
     }
 
-    /**
-     * 获取单例实例
-     */
+    // 单例模式
     public static synchronized AuthRepository getInstance(Context context) {
         if (instance == null) {
             instance = new AuthRepository(context);
@@ -34,146 +26,158 @@ public class AuthRepository {
         return instance;
     }
 
-    /**
-     * 注册用户，用户名唯一。
-     */
-    public synchronized boolean register(User user) {
-        if (user == null || TextUtils.isEmpty(user.getUsername()) || TextUtils.isEmpty(user.getPassword())) {
-            return false;
-        }
+    // 1. 注册用户（插入新用户）
+    public boolean registerUser(String username, String password, Integer age, String phone) {
         SQLiteDatabase db = dbHelper.getWritableDatabase();
-        ContentValues values = new ContentValues();
-        values.put("username", user.getUsername());
-        values.put("password", user.getPassword());
-        if (user.getAge() != null) {
-            values.put("age", user.getAge());
-        }
-        if (!TextUtils.isEmpty(user.getPhone())) {
-            values.put("phone", user.getPhone());
-        }
         try {
-            long rowId = db.insertOrThrow(UserDatabaseHelper.TABLE_USERS, null, values);
-            user.setId(rowId);
+            ContentValues values = new ContentValues();
+            values.put(UserDatabaseHelper.COLUMN_USER_USERNAME, username);
+            values.put(UserDatabaseHelper.COLUMN_USER_PASSWORD, password);
+            if (age != null) {
+                values.put(UserDatabaseHelper.COLUMN_USER_AGE, age);
+            }
+            if (phone != null) {
+                values.put(UserDatabaseHelper.COLUMN_USER_PHONE, phone);
+            }
+            // 插入成功返回行ID（>0），失败返回-1（用户名重复）
+            long rowId = db.insert(UserDatabaseHelper.TABLE_USERS, null, values);
             return rowId != -1;
-        } catch (SQLException e) {
-            return false;
         } finally {
             db.close();
         }
     }
 
-    /**
-     * 校验用户名密码。
-     */
-    public boolean login(String username, String password) {
-        if (TextUtils.isEmpty(username) || TextUtils.isEmpty(password)) {
-            return false;
+    // 2. 登录验证（根据用户名和密码查询）
+    public boolean loginUser(String username, String password) {
+        SQLiteDatabase db = dbHelper.getReadableDatabase();
+        Cursor cursor = null;
+        try {
+            cursor = db.query(
+                    UserDatabaseHelper.TABLE_USERS,
+                    new String[]{UserDatabaseHelper.COLUMN_USER_ID},
+                    UserDatabaseHelper.COLUMN_USER_USERNAME + "=? AND " + UserDatabaseHelper.COLUMN_USER_PASSWORD + "=?",
+                    new String[]{username, password},
+                    null, null, null
+            );
+            // 存在匹配记录则登录成功
+            return cursor != null && cursor.moveToFirst();
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
+            db.close();
         }
-        SQLiteDatabase db = dbHelper.getReadableDatabase();
-        Cursor cursor = db.query(
-                UserDatabaseHelper.TABLE_USERS,
-                new String[]{"_id"},
-                "username=? AND password=?",
-                new String[]{username, password},
-                null,
-                null,
-                null
-        );
-        boolean success = cursor.moveToFirst();
-        cursor.close();
-        db.close();
-        return success;
     }
 
-    /**
-     * 返回数据库物理路径，便于调试查看。
-     */
-    public String getDbPath(Context context) {
-        return context.getDatabasePath(UserDatabaseHelper.DB_NAME).getAbsolutePath();
-    }
-
-    /**
-     * 是否存在用户名。
-     */
-    public boolean userExists(String username) {
-        SQLiteDatabase db = dbHelper.getReadableDatabase();
-        Cursor cursor = db.query(
-                UserDatabaseHelper.TABLE_USERS,
-                new String[]{"_id"},
-                "username=?",
-                new String[]{username},
-                null,
-                null,
-                null
-        );
-        boolean exists = cursor.moveToFirst();
-        cursor.close();
-        db.close();
-        return exists;
-    }
-
+    // 3. 根据用户名查询用户信息
     public User getUser(String username) {
         SQLiteDatabase db = dbHelper.getReadableDatabase();
-        Cursor cursor = db.query(
-                UserDatabaseHelper.TABLE_USERS,
-                new String[]{"_id","username","password","age","phone"},
-                "username=?",
-                new String[]{username},
-                null,
-                null,
-                null
-        );
-        User user = null;
-        if (cursor.moveToFirst()) {
-            user = parseUser(cursor);
+        Cursor cursor = null;
+        try {
+            cursor = db.query(
+                    UserDatabaseHelper.TABLE_USERS,
+                    null, // 查询所有字段
+                    UserDatabaseHelper.COLUMN_USER_USERNAME + "=?",
+                    new String[]{username},
+                    null, null, null
+            );
+            if (cursor != null && cursor.moveToFirst()) {
+                User user = new User();
+                user.setId(cursor.getLong(cursor.getColumnIndex(UserDatabaseHelper.COLUMN_USER_ID)));
+                user.setUsername(cursor.getString(cursor.getColumnIndex(UserDatabaseHelper.COLUMN_USER_USERNAME)));
+                user.setPassword(cursor.getString(cursor.getColumnIndex(UserDatabaseHelper.COLUMN_USER_PASSWORD)));
+                if (!cursor.isNull(cursor.getColumnIndex(UserDatabaseHelper.COLUMN_USER_AGE))) {
+                    user.setAge(cursor.getInt(cursor.getColumnIndex(UserDatabaseHelper.COLUMN_USER_AGE)));
+                }
+                if (!cursor.isNull(cursor.getColumnIndex(UserDatabaseHelper.COLUMN_USER_PHONE))) {
+                    user.setPhone(cursor.getString(cursor.getColumnIndex(UserDatabaseHelper.COLUMN_USER_PHONE)));
+                }
+                return user;
+            }
+            return null;
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
+            db.close();
         }
-        cursor.close();
-        db.close();
-        return user;
     }
 
-    public boolean updateUser(User user) {
-        if (user == null || TextUtils.isEmpty(user.getUsername())) return false;
+    // 4. 修改用户资料（年龄/手机号）
+    public boolean updateUserInfo(String username, Integer age, String phone) {
         SQLiteDatabase db = dbHelper.getWritableDatabase();
-        ContentValues values = new ContentValues();
-        if (!TextUtils.isEmpty(user.getPassword())) {
-            values.put("password", user.getPassword());
+        try {
+            ContentValues values = new ContentValues();
+            if (age != null) {
+                values.put(UserDatabaseHelper.COLUMN_USER_AGE, age);
+            }
+            if (phone != null) {
+                values.put(UserDatabaseHelper.COLUMN_USER_PHONE, phone);
+            }
+            // 执行更新
+            int rowsAffected = db.update(
+                    UserDatabaseHelper.TABLE_USERS,
+                    values,
+                    UserDatabaseHelper.COLUMN_USER_USERNAME + "=?",
+                    new String[]{username}
+            );
+            return rowsAffected > 0;
+        } finally {
+            db.close();
         }
-        if (user.getAge() != null) {
-            values.put("age", user.getAge());
-        }
-        if (!TextUtils.isEmpty(user.getPhone())) {
-            values.put("phone", user.getPhone());
-        }
-        int rows = db.update(UserDatabaseHelper.TABLE_USERS, values, "username=?", new String[]{user.getUsername()});
-        db.close();
-        return rows > 0;
     }
 
-    public boolean deleteUser(String username) {
+    // 5. 修改用户密码
+    public boolean updatePassword(String username, String newPassword) {
         SQLiteDatabase db = dbHelper.getWritableDatabase();
-        int rows = db.delete(UserDatabaseHelper.TABLE_USERS, "username=?", new String[]{username});
-        db.close();
-        return rows > 0;
+        try {
+            ContentValues values = new ContentValues();
+            values.put(UserDatabaseHelper.COLUMN_USER_PASSWORD, newPassword);
+            int rowsAffected = db.update(
+                    UserDatabaseHelper.TABLE_USERS,
+                    values,
+                    UserDatabaseHelper.COLUMN_USER_USERNAME + "=?",
+                    new String[]{username}
+            );
+            return rowsAffected > 0;
+        } finally {
+            db.close();
+        }
     }
 
-    public Cursor listUsers() {
+    // 6. 查询所有用户（可选，用于管理员功能）
+    public List<User> getAllUsers() {
+        List<User> userList = new ArrayList<>();
         SQLiteDatabase db = dbHelper.getReadableDatabase();
-        return db.query(UserDatabaseHelper.TABLE_USERS,
-                new String[]{"_id","username","age","phone","created_at"},
-                null,null,null,null,"_id DESC");
-    }
-
-    private User parseUser(Cursor cursor) {
-        User user = new User();
-        user.setId(cursor.getLong(cursor.getColumnIndexOrThrow("_id")));
-        user.setUsername(cursor.getString(cursor.getColumnIndexOrThrow("username")));
-        user.setPassword(cursor.getString(cursor.getColumnIndexOrThrow("password")));
-        if (!cursor.isNull(cursor.getColumnIndexOrThrow("age"))) {
-            user.setAge(cursor.getInt(cursor.getColumnIndexOrThrow("age")));
+        Cursor cursor = null;
+        try {
+            cursor = db.query(
+                    UserDatabaseHelper.TABLE_USERS,
+                    null,
+                    null, null, null, null,
+                    UserDatabaseHelper.COLUMN_USER_CREATE_TIME + " DESC"
+            );
+            if (cursor != null) {
+                while (cursor.moveToNext()) {
+                    User user = new User();
+                    user.setId(cursor.getLong(cursor.getColumnIndex(UserDatabaseHelper.COLUMN_USER_ID)));
+                    user.setUsername(cursor.getString(cursor.getColumnIndex(UserDatabaseHelper.COLUMN_USER_USERNAME)));
+                    user.setPassword(cursor.getString(cursor.getColumnIndex(UserDatabaseHelper.COLUMN_USER_PASSWORD)));
+                    if (!cursor.isNull(cursor.getColumnIndex(UserDatabaseHelper.COLUMN_USER_AGE))) {
+                        user.setAge(cursor.getInt(cursor.getColumnIndex(UserDatabaseHelper.COLUMN_USER_AGE)));
+                    }
+                    if (!cursor.isNull(cursor.getColumnIndex(UserDatabaseHelper.COLUMN_USER_PHONE))) {
+                        user.setPhone(cursor.getString(cursor.getColumnIndex(UserDatabaseHelper.COLUMN_USER_PHONE)));
+                    }
+                    userList.add(user);
+                }
+            }
+            return userList;
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
+            db.close();
         }
-        user.setPhone(cursor.getString(cursor.getColumnIndexOrThrow("phone")));
-        return user;
     }
 }
-

@@ -13,10 +13,10 @@ import retrofit2.converter.gson.GsonConverterFactory;
  * Retrofit 单例客户端，负责创建 API 实例。
  */
 public class RetrofitClient {
-    private static final String BASE_URL = "https://api.dictionaryapi.dev/";
+    // 百度翻译API baseUrl
+    private static final String BASE_URL = "https://fanyi-api.baidu.com/";
     private static RetrofitClient instance;
-    private final DictionaryApi dictionaryApi;
-
+    private final TranslationApi translationApi;
     private RetrofitClient() {
         HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor(
                 message -> Log.d("Retrofit", message)
@@ -34,7 +34,7 @@ public class RetrofitClient {
                 .addConverterFactory(GsonConverterFactory.create())
                 .client(client)
                 .build();
-        dictionaryApi = retrofit.create(DictionaryApi.class);
+        translationApi = retrofit.create(TranslationApi.class);
     }
 
     public static synchronized RetrofitClient getInstance() {
@@ -44,8 +44,8 @@ public class RetrofitClient {
         return instance;
     }
 
-    public DictionaryApi getDictionaryApi() {
-        return dictionaryApi;
+    public TranslationApi getTranslationApi() { // 提供翻译API
+        return translationApi;
     }
 }
 
