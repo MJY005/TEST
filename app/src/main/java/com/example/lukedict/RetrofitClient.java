@@ -55,14 +55,31 @@ import retrofit2.converter.gson.GsonConverterFactory;
 //}
 //
 public class RetrofitClient {
+<<<<<<< HEAD
     private Retrofit retrofit;
     private static RetrofitClient instance;
+=======
+    // 百度翻译API baseUrl
+    private static final String BASE_URL = "https://fanyi-api.baidu.com/";
+    private static RetrofitClient instance;
+    private final TranslationApi translationApi;
+>>>>>>> 5d77a0b1a2ba411aa04f10f1f085143c04f96471
     private RetrofitClient() {
         // 初始化Retrofit（替换成你的实际基础URL）
         retrofit = new Retrofit.Builder()
                 .baseUrl("https://your-api-base-url.com/")
                 .addConverterFactory(GsonConverterFactory.create()) // 解析JSON的转换器
                 .build();
+<<<<<<< HEAD
+=======
+
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(BASE_URL)
+                .addConverterFactory(GsonConverterFactory.create())
+                .client(client)
+                .build();
+        translationApi = retrofit.create(TranslationApi.class);
+>>>>>>> 5d77a0b1a2ba411aa04f10f1f085143c04f96471
     }
     // 百度翻译API基础地址
     private static final String BAIDU_BASE_URL = "https://fanyi-api.baidu.com/";
@@ -77,6 +94,7 @@ public class RetrofitClient {
         return instance;
     }
 
+<<<<<<< HEAD
     public static BaiduTranslateApi getBaiduApi() {
         if (baiduRetrofit == null) {
             baiduRetrofit = new Retrofit.Builder()
@@ -85,6 +103,10 @@ public class RetrofitClient {
                     .build();
         }
         return baiduRetrofit.create(BaiduTranslateApi.class);
+=======
+    public TranslationApi getTranslationApi() { // 提供翻译API
+        return translationApi;
+>>>>>>> 5d77a0b1a2ba411aa04f10f1f085143c04f96471
     }
 
 }
