@@ -3,20 +3,28 @@ package com.example.lukedict;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
+/**
+ * MD5工具类，用于百度翻译API签名生成
+ */
 public class MD5Utils {
-    public static String md5(String s) {
+    /**
+     * 生成MD5哈希值
+     */
+    public static String md5(String input) {
         try {
             MessageDigest md = MessageDigest.getInstance("MD5");
-            byte[] bytes = md.digest(s.getBytes());
-            StringBuilder sb = new StringBuilder();
-            for (byte b : bytes) {
-                String hex = Integer.toHexString(b & 0xFF);
-                if (hex.length() == 1) sb.append('0');
-                sb.append(hex);
+            byte[] messageDigest = md.digest(input.getBytes());
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : messageDigest) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) {
+                    hexString.append('0');
+                }
+                hexString.append(hex);
             }
-            return sb.toString();
+            return hexString.toString();
         } catch (NoSuchAlgorithmException e) {
-            return "";
+            throw new RuntimeException(e);
         }
     }
 }

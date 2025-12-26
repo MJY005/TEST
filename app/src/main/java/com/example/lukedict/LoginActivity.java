@@ -80,26 +80,40 @@ public class LoginActivity extends AppCompatActivity {
             Toast.makeText(LoginActivity.this,"用户名或密码为空",Toast.LENGTH_SHORT).show();
             return;
         }
-        boolean success = authRepository.login(name, pwd);
-        if (!success) {
-            Toast.makeText(this, "账号或密码错误，请先注册或重试", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        if(cb_remember.isChecked()){
-            SharedPreferences.Editor editor = sp.edit();
-            editor.putString("name",name);
-            editor.putString("pwd",pwd);
-            editor.putBoolean("rememberpwd",true);
-            editor.apply();
-        }else{
-            sp.edit().putBoolean("rememberpwd",false).apply();
-        }
-        if(cb_autologin.isChecked()){
-            sp.edit().putBoolean("autologin",true).apply();
-        }else{
-            sp.edit().putBoolean("autologin",false).apply();
-        }
-        startActivity(new Intent(this, Main_menu.class));
+        // 使用回调接口进行登录验证
+        authRepository.login(name, pwd, new AuthRepository.AuthCallback<Boolean>() {
+            @Override
+            public void onResult(Boolean success) {
+                runOnUiThread(() -> {
+                    if (!success) {
+                        Toast.makeText(LoginActivity.this, "账号或密码错误，请先注册或重试", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    if(cb_remember.isChecked()){
+                        SharedPreferences.Editor editor = sp.edit();
+                        editor.putString("name",name);
+                        editor.putString("pwd",pwd);
+                        editor.putBoolean("rememberpwd",true);
+                        editor.apply();
+                    }else{
+                        sp.edit().putBoolean("rememberpwd",false).apply();
+                    }
+                    if(cb_autologin.isChecked()){
+                        sp.edit().putBoolean("autologin",true).apply();
+                    }else{
+                        sp.edit().putBoolean("autologin",false).apply();
+                    }
+                    startActivity(new Intent(LoginActivity.this, Main_menu.class));
+                });
+            }
+
+            @Override
+            public void onError(Throwable e) {
+                runOnUiThread(() -> {
+                    Toast.makeText(LoginActivity.this, "登录失败：" + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
     }
 
 }

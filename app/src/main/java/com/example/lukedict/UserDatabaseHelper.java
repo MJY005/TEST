@@ -6,7 +6,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 
 public class UserDatabaseHelper extends SQLiteOpenHelper {
     public static final String DB_NAME = "test.db";
-    public static final int DB_VERSION = 1;
+    public static final int DB_VERSION = 2; // 修复：与数据库当前版本一致
     // 统一表名为"user"，与DDL一致
     public static final String TABLE_USERS = "user";
     public static final String TABLE_WORD_HISTORY = "word_history";
@@ -24,7 +24,7 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
                 "password TEXT NOT NULL, " +
                 "age INTEGER, " +
                 "phone TEXT, " +
-                "create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+                "created_at INTEGER DEFAULT (strftime('%s','now')))");
 
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_user_username ON " + TABLE_USERS + "(username)");
 
@@ -48,7 +48,24 @@ public class UserDatabaseHelper extends SQLiteOpenHelper {
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_USERS);
-        onCreate(db);
+        // 处理数据库版本升级
+        if (oldVersion < 2) {
+            // 从版本1升级到版本2：添加created_at字段（如果不存在）
+            try {
+                db.execSQL("ALTER TABLE " + TABLE_USERS + " ADD COLUMN created_at INTEGER DEFAULT (strftime('%s','now'))");
+            } catch (Exception e) {
+                // 字段可能已存在，忽略错误
+            }
+        }
+        // 如果未来需要更多版本升级，在这里添加
     }
+    
+//    @Override
+//    public void onDowngrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+//        // 处理数据库版本降级（通常不推荐，但可以处理）
+//        // 如果确实需要降级，可以删除表重新创建（会丢失数据）
+////        db.execSQL("DROP TABLE IF EXISTS " + TABLE_WORD_HISTORY);
+////        db.execSQL("DROP TABLE IF EXISTS " + TABLE_USERS);
+////        onCreate(db);
+//    }
 }

@@ -59,29 +59,45 @@ public class AuthRepository {
         backgroundExecutor.execute(() -> {
             callback.onLoading(true);
             SQLiteDatabase db = null;
+            Cursor cursor = null;
             try {
                 db = dbHelper.getWritableDatabase();
-                // 检查用户名是否存在
-                if (userExistsSync(user.getUsername())) {
+                // 检查用户名是否存在（使用同一个数据库连接）
+                cursor = db.query(
+                        UserDatabaseHelper.TABLE_USERS,
+                        new String[]{"_id"},
+                        "username=?",
+                        new String[]{user.getUsername()},
+                        null, null, null
+                );
+                if (cursor.moveToFirst()) {
                     callback.onResult(false);
                     return;
                 }
+                cursor.close();
+                cursor = null;
 
                 // 密码加密存储
                 ContentValues values = new ContentValues();
                 values.put("username", user.getUsername());
                 values.put("password", encryptPassword(user.getPassword()));
-                values.put("age", user.getAge());
-                values.put("phone", user.getPhone());
+                if (user.getAge() != null) {
+                    values.put("age", user.getAge());
+                }
+                if (!TextUtils.isEmpty(user.getPhone())) {
+                    values.put("phone", user.getPhone());
+                }
                 values.put("created_at", System.currentTimeMillis());
 
                 long rowId = db.insertOrThrow(UserDatabaseHelper.TABLE_USERS, null, values);
+                Log.d(TAG, "注册成功，用户ID: " + rowId + ", 用户名: " + user.getUsername());
                 callback.onResult(rowId != -1);
             } catch (SQLException e) {
                 Log.e(TAG, "注册失败", e);
                 callback.onError(e);
                 callback.onResult(false);
             } finally {
+                if (cursor != null) cursor.close();
                 if (db != null) db.close();
                 callback.onLoading(false);
             }
@@ -102,14 +118,34 @@ public class AuthRepository {
             try {
                 db = dbHelper.getReadableDatabase();
                 String encryptedPwd = encryptPassword(password);
+                Log.d(TAG, "登录尝试，用户名: " + username);
                 cursor = db.query(
                         UserDatabaseHelper.TABLE_USERS,
-                        new String[]{"_id"},
+                        new String[]{"_id", "password"},
                         "username=? AND password=?",
                         new String[]{username, encryptedPwd},
                         null, null, null
                 );
-                callback.onResult(cursor.moveToFirst());
+                boolean found = cursor.moveToFirst();
+                if (found) {
+                    Log.d(TAG, "登录成功，用户ID: " + cursor.getLong(0));
+                } else {
+                    // 检查用户是否存在但密码错误
+                    cursor.close();
+                    cursor = db.query(
+                            UserDatabaseHelper.TABLE_USERS,
+                            new String[]{"_id"},
+                            "username=?",
+                            new String[]{username},
+                            null, null, null
+                    );
+                    if (cursor.moveToFirst()) {
+                        Log.d(TAG, "用户存在但密码错误");
+                    } else {
+                        Log.d(TAG, "用户不存在: " + username);
+                    }
+                }
+                callback.onResult(found);
             } catch (Exception e) {
                 Log.e(TAG, "登录失败", e);
                 callback.onError(e);

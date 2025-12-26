@@ -559,7 +559,7 @@ public class SearchActivity extends AppCompatActivity {
      * 搜索单词的异步任务
      */
     private class SearchWordTask extends AsyncTask<String, Void, List<WordBean>> {
-        private Call<List<WordApiResponse>> apiCall; // 用于取消网络请求
+        private retrofit2.Call<BaiduTranslateResponse> translationCall; // 用于取消网络请求
 
         @Override
         protected void onPreExecute() {
@@ -570,39 +570,124 @@ public class SearchActivity extends AppCompatActivity {
         @Override
         protected List<WordBean> doInBackground(String... params) {
             String word = params[0];
-            // 构建网络请求
-            apiCall = RetrofitClient.getInstance()
-                    .getDictionaryApi()
-                    .getWordInfo(word);
-
+            
+            // 先查询本地词库
+            List<WordBean> localResults = SearchUtils.searchLocal(word);
+            
+            // 使用百度翻译API获取中文翻译
             try {
                 // 检查任务是否已取消
-                if (isCancelled()) return null;
+                if (isCancelled()) return localResults != null ? localResults : new ArrayList<>();
 
-                Response<List<WordApiResponse>> response = apiCall.execute();
-                if (response.isSuccessful() && response.body() != null && !response.body().isEmpty()) {
-                    List<WordBean> beans = convertApiResponseToWordBean(response.body());
-                    // 补充中文翻译
-                    for (WordBean bean : beans) {
-                        if (TextUtils.isEmpty(bean.getTran())) {
-                            String translated = translateToChinese(bean.getTitle());
-                            if (!TextUtils.isEmpty(translated)) {
-                                bean.setTran(translated);
-                            }
-                        }
-                    }
-                    return beans;
+                // 百度翻译API配置
+                String BAIDU_APP_ID = "7367498";
+                String BAIDU_SECRET_KEY = "GqHxRVJqiM1zycfkAmbwLmq5MLpx2dFb";
+                
+                // 检查是否已配置（修复：检查是否为占位符）
+                if (BAIDU_APP_ID == null || BAIDU_APP_ID.isEmpty() || 
+                    "你的APP_ID".equals(BAIDU_APP_ID) ||
+                    BAIDU_SECRET_KEY == null || BAIDU_SECRET_KEY.isEmpty() ||
+                    "你的SECRET_KEY".equals(BAIDU_SECRET_KEY)) {
+                    android.util.Log.w("SearchActivity", "百度翻译API未配置，使用本地词库");
+                    return localResults != null ? localResults : new ArrayList<>();
                 }
-            } catch (IOException e) {
+                
+                // 在执行网络请求前检查是否已取消
+                if (isCancelled()) {
+                    return localResults != null ? localResults : new ArrayList<>();
+                }
+                
+                // 生成签名（百度翻译API要求）
+                String salt = String.valueOf(System.currentTimeMillis());
+                String signStr = BAIDU_APP_ID + word + salt + BAIDU_SECRET_KEY;
+                String sign = MD5Utils.md5(signStr);
+                
+                // 调用百度翻译API
+                translationCall = RetrofitClient.getInstance()
+                        .getBaiduTranslateApi()
+                        .translate(word, "en", "zh", BAIDU_APP_ID, salt, sign);
+                
+                // 再次检查是否已取消（在请求执行前）
+                if (isCancelled()) {
+                    if (translationCall != null) {
+                        translationCall.cancel();
+                        translationCall = null;
+                    }
+                    return localResults != null ? localResults : new ArrayList<>();
+                }
+                
+                retrofit2.Response<BaiduTranslateResponse> response = translationCall.execute();
+                
+                // 请求完成后，检查是否已取消
+                if (isCancelled()) {
+                    if (translationCall != null) {
+                        translationCall.cancel();
+                        translationCall = null;
+                    }
+                    return localResults != null ? localResults : new ArrayList<>();
+                }
+                
+                if (response.isSuccessful() && response.body() != null) {
+                    BaiduTranslateResponse resp = response.body();
+                    String translatedText = "";
+                    
+                    // 解析百度翻译响应
+                    if (resp.getTransResult() != null && !resp.getTransResult().isEmpty()) {
+                        translatedText = resp.getTransResult().get(0).getDst();
+                    }
+                    
+                    // 请求成功，释放资源
+                    translationCall = null;
+                    
+                    // 如果本地有结果，更新翻译；否则创建新结果
+                    if (localResults != null && !localResults.isEmpty()) {
+                        if (!TextUtils.isEmpty(translatedText)) {
+                            localResults.get(0).setTran(translatedText);
+                        }
+                        return localResults;
+                    } else if (!TextUtils.isEmpty(translatedText)) {
+                        // 创建新的WordBean，只有翻译结果
+                        WordBean bean = new WordBean(word, translatedText, "翻译结果：" + translatedText, "", "");
+                        List<WordBean> result = new ArrayList<>();
+                        result.add(bean);
+                        android.util.Log.d("SearchActivity", "百度翻译成功: " + word + " -> " + translatedText);
+                        return result;
+                    }
+                } else {
+                    // 请求失败，释放资源
+                    translationCall = null;
+                    
+                    String errorMsg = "未知错误";
+                    try {
+                        if (response.errorBody() != null) {
+                            errorMsg = response.errorBody().string();
+                        }
+                    } catch (Exception ex) {
+                        errorMsg = "读取错误信息失败";
+                    }
+                    android.util.Log.w("SearchActivity", "百度翻译API响应失败，状态码: " + response.code() + ", 错误: " + errorMsg);
+                }
+            } catch (java.io.InterruptedIOException e) {
+                // 请求被中断（通常是任务被取消），这是正常情况，不需要记录错误
+                android.util.Log.d("SearchActivity", "翻译API请求被中断（任务已取消）");
+                if (translationCall != null) {
+                    translationCall.cancel();
+                    translationCall = null;
+                }
+            } catch (Exception e) {
+                // 网络请求失败，记录日志但不影响主流程
+                android.util.Log.w("SearchActivity", "翻译API请求失败，使用本地词库: " + e.getMessage());
                 e.printStackTrace();
             } finally {
                 // 任务取消时取消网络请求
-                if (isCancelled() && apiCall != null) {
-                    apiCall.cancel();
+                if (isCancelled() && translationCall != null) {
+                    translationCall.cancel();
+                    translationCall = null;
                 }
             }
-            // 网络请求失败时查询本地词库
-            return SearchUtils.searchLocal(word);
+            
+            // 网络请求失败或未配置，返回本地词库结果
+            return localResults != null ? localResults : new ArrayList<>();
         }
 
         @Override
@@ -616,7 +701,10 @@ public class SearchActivity extends AppCompatActivity {
         protected void onCancelled() {
             super.onCancelled();
             loadingView.setVisibility(View.GONE);
-            apiCall = null; // 释放资源
+            if (translationCall != null) {
+                translationCall.cancel();
+                translationCall = null; // 释放资源
+            }
         }
     }
 
@@ -690,18 +778,25 @@ public class SearchActivity extends AppCompatActivity {
     }
 
     /**
-     * 翻译文本为中文
+     * 翻译文本为中文（使用百度翻译API）
      */
     private String translateToChinese(String text) {
         try {
-            Call<TranslationResponse> call = TranslationClient.getApi()
-                    .translate(text, "en|zh-CN");
+            Call<TranslationResponse> call = RetrofitClient.getInstance()
+                    .getTranslationApi()
+                    .translate(text, "en", "zh");
             Response<TranslationResponse> resp = call.execute();
-            if (resp.isSuccessful() && resp.body() != null && resp.body().getResponseData() != null) {
-                return resp.body().getResponseData().getTranslatedText();
+            if (resp.isSuccessful() && resp.body() != null) {
+                TranslationResponse body = resp.body();
+                if (body.getResponseData() != null) {
+                    return body.getResponseData().getTranslatedText();
+                } else if (body.trans_result != null && !body.trans_result.isEmpty()) {
+                    return body.trans_result.get(0).getDst();
+                }
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             // 翻译失败不影响主流程
+            e.printStackTrace();
         }
         return "";
     }

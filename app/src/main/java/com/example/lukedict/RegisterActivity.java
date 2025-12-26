@@ -17,19 +17,22 @@ public class RegisterActivity extends AppCompatActivity {
 
         // 初始化
         authRepository = AuthRepository.getInstance(this);
-        etUsername = findViewById(R.id.et_username);
-        etPassword = findViewById(R.id.et_password);
-        etAge = findViewById(R.id.et_age);
-        etPhone = findViewById(R.id.et_phone);
+        etUsername = findViewById(R.id.register_et_username);
+        etPassword = findViewById(R.id.register_et_password);
+        etAge = findViewById(R.id.register_et_age);
+        etPhone = findViewById(R.id.register_et_phone);
+        
+        // 绑定注册按钮点击事件
+        findViewById(R.id.register_btn_submit).setOnClickListener(this::onRegisterClick);
     }
 
-    // 注册按钮点击事件（替换为你的按钮ID对应的点击方法）
+    // 注册按钮点击事件
     public void onRegisterClick(View view) {
         // 获取输入
-        String username = etUsername.getText().toString().trim();
-        String password = etPassword.getText().toString().trim();
-        String ageStr = etAge.getText().toString().trim();
-        String phone = etPhone.getText().toString().trim();
+        final String username = etUsername.getText().toString().trim();
+        final String password = etPassword.getText().toString().trim();
+        final String ageStr = etAge.getText().toString().trim();
+        final String phone = etPhone.getText().toString().trim();
 
         // 输入校验
         if (username.isEmpty() || password.isEmpty()) {
@@ -37,8 +40,8 @@ public class RegisterActivity extends AppCompatActivity {
             return;
         }
 
-        // 解析年龄
-        Integer age = null;
+        // 解析年龄（使用final变量）
+        final Integer age;
         if (!ageStr.isEmpty()) {
             try {
                 age = Integer.parseInt(ageStr);
@@ -46,6 +49,8 @@ public class RegisterActivity extends AppCompatActivity {
                 Toast.makeText(this, "年龄必须是数字", Toast.LENGTH_SHORT).show();
                 return;
             }
+        } else {
+            age = null;
         }
 
         // 1. 检查用户名是否存在
@@ -56,7 +61,7 @@ public class RegisterActivity extends AppCompatActivity {
                     if (exists) {
                         Toast.makeText(RegisterActivity.this, "用户名已存在", Toast.LENGTH_SHORT).show();
                     } else {
-                        // 2. 执行注册
+                        // 2. 执行注册（变量已经是final，可以直接使用）
                         registerUser(username, password, age, phone);
                     }
                 });
@@ -64,17 +69,16 @@ public class RegisterActivity extends AppCompatActivity {
 
             @Override
             public void onError(Throwable e) {
-                runOnUiThread(() -> {
-                    Toast.makeText(RegisterActivity.this, "检查用户失败：" + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
+                runOnUiThread(() -> 
+                    Toast.makeText(RegisterActivity.this, "检查用户失败：" + e.getMessage(), Toast.LENGTH_SHORT).show()
+                );
             }
 
             @Override
             public void onLoading(boolean isLoading) {
-                runOnUiThread(() -> {
-                    // 可选：显示加载动画
-                    findViewById(R.id.btn_register).setEnabled(!isLoading);
-                });
+                runOnUiThread(() -> 
+                    findViewById(R.id.register_btn_submit).setEnabled(!isLoading)
+                );
             }
         });
     }
@@ -87,7 +91,6 @@ public class RegisterActivity extends AppCompatActivity {
             public void onResult(Boolean success) {
                 runOnUiThread(() -> {
                     if (success) {
-                        // 修正getDbPath调用（无参数）
                         String dbPath = authRepository.getDbPath();
                         Toast.makeText(RegisterActivity.this,
                                 "注册成功！数据库路径：" + dbPath, Toast.LENGTH_LONG).show();
@@ -100,16 +103,16 @@ public class RegisterActivity extends AppCompatActivity {
 
             @Override
             public void onError(Throwable e) {
-                runOnUiThread(() -> {
-                    Toast.makeText(RegisterActivity.this, "注册失败：" + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
+                runOnUiThread(() -> 
+                    Toast.makeText(RegisterActivity.this, "注册失败：" + e.getMessage(), Toast.LENGTH_SHORT).show()
+                );
             }
 
             @Override
             public void onLoading(boolean isLoading) {
-                runOnUiThread(() -> {
-                    findViewById(R.id.btn_register).setEnabled(!isLoading);
-                });
+                runOnUiThread(() -> 
+                    findViewById(R.id.register_btn_submit).setEnabled(!isLoading)
+                );
             }
         });
     }

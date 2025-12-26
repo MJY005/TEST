@@ -17,6 +17,4 @@ public interface BaiduTranslateApi {
             @Query("salt") String salt,     // 随机数
             @Query("sign") String sign      // 签名
     );
-
-    Call<List<WordApiResponse>> getWordInfo(String word);
 }

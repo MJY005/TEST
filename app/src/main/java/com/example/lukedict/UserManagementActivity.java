@@ -15,10 +15,10 @@ public class UserManagementActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_user_management); // 替换为你的布局ID
+        setContentView(R.layout.activity_user_management);
 
         authRepository = AuthRepository.getInstance(this);
-        lvUsers = findViewById(R.id.lv_users);
+        ListView userListView = findViewById(R.id.user_list_view);
 
         // 加载用户列表
         loadUserList();

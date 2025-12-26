@@ -157,25 +157,39 @@ public class loginPage extends AppCompatActivity implements View.OnClickListener
                     if (TextUtils.isEmpty(name) || TextUtils.isEmpty(pwd)) {
                         Toast.makeText(loginPage.this, "用户名或密码为空", Toast.LENGTH_SHORT).show();
                     } else {
-                        boolean success = authRepository.login(name, pwd);
-                        if (!success) {
-                            Toast.makeText(loginPage.this, "账号或密码错误，请先注册或重试", Toast.LENGTH_SHORT).show();
-                            return;
-                        }
-                        Intent intent=new Intent(loginPage.this,Main_menu.class);
-                        intent.putExtra("message",name);
-                        startActivity(intent);
-                        //是否已经勾选记住密码
-                        if (rememberpassward.isChecked()) {
-                            SharedPreferences.Editor editor = sp.edit();
-                            editor.putString("name", name);
-                            editor.putString("pwd", pwd);
-                            editor.putBoolean("rememberpwd", true);
-                            editor.apply();
-                        } else {
-                            sp.edit().putBoolean("rememberpwd", false).apply();
-                        }
-                        sendNotification();
+                        // 使用回调接口进行登录验证
+                        authRepository.login(name, pwd, new AuthRepository.AuthCallback<Boolean>() {
+                            @Override
+                            public void onResult(Boolean success) {
+                                runOnUiThread(() -> {
+                                    if (!success) {
+                                        Toast.makeText(loginPage.this, "账号或密码错误，请先注册或重试", Toast.LENGTH_SHORT).show();
+                                        return;
+                                    }
+                                    Intent intent = new Intent(loginPage.this, Main_menu.class);
+                                    intent.putExtra("message", name);
+                                    startActivity(intent);
+                                    //是否已经勾选记住密码
+                                    if (rememberpassward.isChecked()) {
+                                        SharedPreferences.Editor editor = sp.edit();
+                                        editor.putString("name", name);
+                                        editor.putString("pwd", pwd);
+                                        editor.putBoolean("rememberpwd", true);
+                                        editor.apply();
+                                    } else {
+                                        sp.edit().putBoolean("rememberpwd", false).apply();
+                                    }
+                                    sendNotification();
+                                });
+                            }
+
+                            @Override
+                            public void onError(Throwable e) {
+                                runOnUiThread(() -> {
+                                    Toast.makeText(loginPage.this, "登录失败：" + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                });
+                            }
+                        });
                     }
                     break;
                 case R.id.tv_register:
