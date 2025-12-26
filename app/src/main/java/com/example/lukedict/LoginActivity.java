@@ -101,4 +101,5 @@ public class LoginActivity extends AppCompatActivity {
         }
         startActivity(new Intent(this, Main_menu.class));
     }
+
 }

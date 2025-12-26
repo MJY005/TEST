@@ -15,5 +15,7 @@ public interface TranslationApi {
             @Query("salt") String salt,
             @Query("sign") String sign
     );
+
+    Call<TranslationResponse> translate(String text, String s);
 }
 

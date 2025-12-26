@@ -45,7 +45,7 @@ public class WordBean implements Serializable {
         return audioUrl;
     }
 
-    public void setAudioUrl(String audioUrl) {
+    public void setAudio(String audioUrl) {
         this.audioUrl = audioUrl;
     }
 
@@ -62,5 +62,9 @@ public class WordBean implements Serializable {
     }
 
     public WordBean() {
+    }
+
+    public String getAudio() {
+        return null;
     }
 }

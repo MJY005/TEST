@@ -7,6 +7,7 @@ public class User {
     private String password;
     private Integer age;
     private String phone;
+    private long created_at;
 
     // Getter & Setter
     public long getId() { return id; }
@@ -19,4 +20,8 @@ public class User {
     public void setAge(Integer age) { this.age = age; }
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }
+
+    public void setCreatedAt(long created_at) {
+        this.created_at = created_at;
+    }
 }
