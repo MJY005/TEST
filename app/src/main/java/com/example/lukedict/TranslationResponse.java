@@ -1,25 +1,34 @@
 package com.example.lukedict;
 
-import com.google.gson.annotations.SerializedName;
-
 import java.util.List;
-//（解析API返回数据）
+
+/**
+ * 翻译接口响应实体（解决getResponseData编译错误）
+ */
 public class TranslationResponse {
-    private String error_code;
-    private List<TranslateResult> trans_result;
+    private int code;
+    private String msg;
+    private ResponseData responseData; // 对应getResponseData()
 
-    public static class TranslateResult {
-        private String src;
-        private String dst;
-
-        public String getDst() { return dst; }
+    // Getter（解决编译错误）
+    public ResponseData getResponseData() {
+        return responseData;
     }
 
-    public boolean isSuccess() { return error_code == null; }
-    public String getTranslatedText() {
-        if (trans_result != null && !trans_result.isEmpty()) {
-            return trans_result.get(0).dst;
+    // 内部实体类
+    public static class ResponseData {
+        private String translatedText; // 翻译结果
+
+        // Getter
+        public String getTranslatedText() {
+            return translatedText;
         }
-        return "翻译失败";
+    }
+
+    // 备用：兼容常见翻译接口格式（如百度翻译）
+    List<TransResult> trans_result;
+    public static class TransResult {
+        private String dst; // 翻译结果
+        public String getDst() { return dst; }
     }
 }

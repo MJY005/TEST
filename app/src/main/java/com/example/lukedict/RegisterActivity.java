@@ -1,86 +1,123 @@
 package com.example.lukedict;
 
-import androidx.appcompat.app.AppCompatActivity;
-
 import android.os.Bundle;
-import android.text.TextUtils;
 import android.view.View;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
+import androidx.appcompat.app.AppCompatActivity;
 
-/**
- * 注册界面：将用户信息写入本地 SQLite。
- */
 public class RegisterActivity extends AppCompatActivity {
-    private EditText etUsername;
-    private EditText etPhone;
-    private EditText etAge;
-    private EditText etPassword;
-    private EditText etConfirm;
-    private Button btnRegister;
     private AuthRepository authRepository;
+    private EditText etUsername, etPassword, etAge, etPhone;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_register);
-        // 使用单例模式获取Repository
+        setContentView(R.layout.activity_register); // 替换为你的布局ID
+
+        // 初始化
         authRepository = AuthRepository.getInstance(this);
-        initView();
+        etUsername = findViewById(R.id.et_username);
+        etPassword = findViewById(R.id.et_password);
+        etAge = findViewById(R.id.et_age);
+        etPhone = findViewById(R.id.et_phone);
     }
 
-    private void initView() {
-        etUsername = findViewById(R.id.register_et_username);
-        etPhone = findViewById(R.id.register_et_phone);
-        etAge = findViewById(R.id.register_et_age);
-        etPassword = findViewById(R.id.register_et_password);
-        etConfirm = findViewById(R.id.register_et_confirm);
-        btnRegister = findViewById(R.id.register_btn_submit);
-
-        btnRegister.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                handleRegister();
-            }
-        });
-    }
-
-    private void handleRegister() {
+    // 注册按钮点击事件（替换为你的按钮ID对应的点击方法）
+    public void onRegisterClick(View view) {
+        // 获取输入
         String username = etUsername.getText().toString().trim();
-        String phone = etPhone.getText().toString().trim();
-        String ageStr = etAge.getText().toString().trim();
         String password = etPassword.getText().toString().trim();
-        String confirm = etConfirm.getText().toString().trim();
+        String ageStr = etAge.getText().toString().trim();
+        String phone = etPhone.getText().toString().trim();
+
+        // 输入校验
+        if (username.isEmpty() || password.isEmpty()) {
+            Toast.makeText(this, "用户名/密码不能为空", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // 解析年龄
         Integer age = null;
-        if (!TextUtils.isEmpty(ageStr)) {
+        if (!ageStr.isEmpty()) {
             try {
                 age = Integer.parseInt(ageStr);
             } catch (NumberFormatException e) {
-                Toast.makeText(this, "年龄需为数字", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "年龄必须是数字", Toast.LENGTH_SHORT).show();
                 return;
             }
         }
 
-        if (TextUtils.isEmpty(username) || TextUtils.isEmpty(password) || TextUtils.isEmpty(confirm)) {
-            Toast.makeText(this, "用户名或密码不能为空", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        if (!password.equals(confirm)) {
-            Toast.makeText(this, "两次输入的密码不一致", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        if (authRepository.userExists(username)) {
-            Toast.makeText(this, "用户名已存在", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        boolean success = authRepository.register(new User(username, password, age, phone));
-        if (success) {
-            Toast.makeText(this, "注册成功，数据已写入: " + authRepository.getDbPath(this), Toast.LENGTH_SHORT).show();
-            finish();
-        } else {
-            Toast.makeText(this, "注册失败，请稍后重试", Toast.LENGTH_SHORT).show();
-        }
+        // 1. 检查用户名是否存在
+        authRepository.userExists(username, new AuthRepository.AuthCallback<Boolean>() {
+            @Override
+            public void onResult(Boolean exists) {
+                runOnUiThread(() -> {
+                    if (exists) {
+                        Toast.makeText(RegisterActivity.this, "用户名已存在", Toast.LENGTH_SHORT).show();
+                    } else {
+                        // 2. 执行注册
+                        registerUser(username, password, age, phone);
+                    }
+                });
+            }
+
+            @Override
+            public void onError(Throwable e) {
+                runOnUiThread(() -> {
+                    Toast.makeText(RegisterActivity.this, "检查用户失败：" + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+            }
+
+            @Override
+            public void onLoading(boolean isLoading) {
+                runOnUiThread(() -> {
+                    // 可选：显示加载动画
+                    findViewById(R.id.btn_register).setEnabled(!isLoading);
+                });
+            }
+        });
+    }
+
+    // 执行注册逻辑
+    private void registerUser(String username, String password, Integer age, String phone) {
+        User user = new User(username, password, age, phone);
+        authRepository.register(user, new AuthRepository.AuthCallback<Boolean>() {
+            @Override
+            public void onResult(Boolean success) {
+                runOnUiThread(() -> {
+                    if (success) {
+                        // 修正getDbPath调用（无参数）
+                        String dbPath = authRepository.getDbPath();
+                        Toast.makeText(RegisterActivity.this,
+                                "注册成功！数据库路径：" + dbPath, Toast.LENGTH_LONG).show();
+                        finish(); // 返回登录页
+                    } else {
+                        Toast.makeText(RegisterActivity.this, "注册失败", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+
+            @Override
+            public void onError(Throwable e) {
+                runOnUiThread(() -> {
+                    Toast.makeText(RegisterActivity.this, "注册失败：" + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+            }
+
+            @Override
+            public void onLoading(boolean isLoading) {
+                runOnUiThread(() -> {
+                    findViewById(R.id.btn_register).setEnabled(!isLoading);
+                });
+            }
+        });
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // 可选：释放资源
+        // authRepository.release();
     }
 }
-

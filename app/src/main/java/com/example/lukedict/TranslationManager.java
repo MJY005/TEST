@@ -1,41 +1,50 @@
 package com.example.lukedict;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-
+import android.util.Log;
+import retrofit2.Call;
 import retrofit2.Callback;
+import retrofit2.Response;
 
+/**
+ * 翻译管理类（修正编译错误）
+ */
 public class TranslationManager {
-    // 替换为你的百度开发者appid和密钥（在百度翻译开放平台申请）
-    private static final String APPID = "你的appid";
-    private static final String SECRET_KEY = "你的密钥";
+    private static final String TAG = "TranslationManager";
 
-    public static void translate(String text, String toLang, Callback<TranslationResponse> callback) {
-        String salt = String.valueOf(System.currentTimeMillis());
-        // 生成签名：MD5(appid+text+salt+密钥)
-        String sign = generateSign(APPID + text + salt + SECRET_KEY);
+    // 翻译方法（异步）
+    public void translate(String text, String from, String to, TranslationCallback callback) {
+        RetrofitClient.getInstance()
+                .getTranslationApi() // 现在有这个方法了
+                .translate(text, from, to)
+                .enqueue(new Callback<TranslationResponse>() {
+                    @Override
+                    public void onResponse(Call<TranslationResponse> call, Response<TranslationResponse> resp) {
+                        if (resp.isSuccessful() && resp.body() != null) {
+                            // 适配getResponseData()
+                            if (resp.body().getResponseData() != null) {
+                                callback.onSuccess(resp.body().getResponseData().getTranslatedText());
+                            } else if (!resp.body().trans_result.isEmpty()) {
+                                // 兼容备用格式
+                                callback.onSuccess(resp.body().trans_result.get(0).getDst());
+                            } else {
+                                callback.onError(new Exception("无翻译结果"));
+                            }
+                        } else {
+                            callback.onError(new Exception("请求失败：" + resp.code()));
+                        }
+                    }
 
-        RetrofitClient.getInstance().getTranslationApi()
-                .translate(text, "auto", toLang, APPID, salt, sign)
-                .enqueue(callback);
+                    @Override
+                    public void onFailure(Call<TranslationResponse> call, Throwable t) {
+                        Log.e(TAG, "翻译失败", t);
+                        callback.onError(t);
+                    }
+                });
     }
 
-    private static String generateSign(String content) {
-        try {
-            MessageDigest md5 = MessageDigest.getInstance("MD5");
-            byte[] bytes = md5.digest(content.getBytes(StandardCharsets.UTF_8));
-            // 转换为16进制字符串
-            StringBuilder sign = new StringBuilder();
-            for (byte b : bytes) {
-                String hex = Integer.toHexString(b & 0xFF);
-                if (hex.length() == 1) sign.append("0");
-                sign.append(hex);
-            }
-            return sign.toString();
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-            return "";
-        }
+    // 翻译回调接口
+    public interface TranslationCallback {
+        void onSuccess(String translatedText);
+        void onError(Throwable e);
     }
 }

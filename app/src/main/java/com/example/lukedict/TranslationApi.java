@@ -1,19 +1,17 @@
 package com.example.lukedict;
 
 import retrofit2.Call;
-import retrofit2.http.GET;
+import retrofit2.http.POST;
 import retrofit2.http.Query;
 
+/**
+ * 翻译接口（适配TranslationResponse）
+ */
 public interface TranslationApi {
-    // 百度翻译API接口
-    @GET("api/trans/vip/translate")
+    @POST("translate")
     Call<TranslationResponse> translate(
-            @Query("q") String query,
-            @Query("from") String from,
-            @Query("to") String to,
-            @Query("appid") String appid,
-            @Query("salt") String salt,
-            @Query("sign") String sign
+            @Query("q") String text,       // 待翻译文本
+            @Query("from") String from,    // 源语言
+            @Query("to") String to         // 目标语言
     );
 }
-
