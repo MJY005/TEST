@@ -10,15 +10,24 @@ import retrofit2.http.POST;
 public class RetrofitClient {
     private static RetrofitClient instance;
     private Retrofit retrofit;
+    private Retrofit dictionaryRetrofit;
     private static final String BASE_URL_BAIDU = "https://fanyi-api.baidu.com/";
+    private static final String BASE_URL_DICTIONARY = "https://www.dictionaryapi.com/";
 
 
     public Retrofit getRetrofit() {
         return retrofit;
     }
     private RetrofitClient() {
+        // 百度翻译API Retrofit实例
         retrofit = new Retrofit.Builder()
                 .baseUrl(BASE_URL_BAIDU)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+        
+        // 词典API Retrofit实例
+        dictionaryRetrofit = new Retrofit.Builder()
+                .baseUrl(BASE_URL_DICTIONARY)
                 .addConverterFactory(GsonConverterFactory.create())
                 .build();
     }
@@ -46,6 +55,11 @@ public class RetrofitClient {
     // 构建百度翻译API的接口服务
     public static BaiduTranslateApi getBaiduTranslateApi() {
         return getBaiduRetrofitInstance().create(BaiduTranslateApi.class);
+    }
+    
+    // 构建词典API的接口服务
+    public DictionaryApi getDictionaryApi() {
+        return dictionaryRetrofit.create(DictionaryApi.class);
     }
 
     // 百度翻译API接口定义

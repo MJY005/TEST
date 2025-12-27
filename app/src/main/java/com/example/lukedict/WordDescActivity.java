@@ -33,8 +33,11 @@ import okhttp3.Response;
 import okhttp3.ResponseBody;
 
 public class WordDescActivity extends AppCompatActivity {
-    TextView titleTv1, descTv, phoneticTv, tranTv, partOfSpeechTv, noDescTv, detailTitleTv;
-    ImageButton audioBtn;
+    TextView titleTv1, descTv, phoneticTv, tranTv, noDescTv, detailTitleTv;
+    TextView exampleTv, exampleLabelTv;
+    android.widget.Button ukAudioBtn, usAudioBtn;
+    ImageButton exampleAudioBtn;
+    android.view.ViewGroup detailsLayout;
     private MediaPlayer mediaPlayer;
     private String audioUrl;
     private String localAudioPath;
@@ -59,30 +62,50 @@ public class WordDescActivity extends AppCompatActivity {
         phoneticTv = findViewById(R.id.worddesc_tv_phonetic);
         tranTv = findViewById(R.id.worddesc_tv_tran);
         descTv = findViewById(R.id.worddesc_tv_desc);
-        partOfSpeechTv = findViewById(R.id.worddesc_tv_part_of_speech);
         noDescTv = findViewById(R.id.worddesc_tv_no_desc);
         detailTitleTv = findViewById(R.id.worddesc_tv_detail_title);
-        audioBtn = findViewById(R.id.worddesc_btn_audio);
+        detailsLayout = findViewById(R.id.worddesc_ll_details);
+        exampleTv = findViewById(R.id.worddesc_tv_example);
+        exampleLabelTv = findViewById(R.id.worddesc_tv_example_label);
+        ukAudioBtn = findViewById(R.id.worddesc_btn_uk_audio);
+        usAudioBtn = findViewById(R.id.worddesc_btn_us_audio);
+        exampleAudioBtn = findViewById(R.id.worddesc_btn_example_audio);
     }
 
     /**
      * 显示单词信息，优化显示格式
      */
     private void displayWordInfo(WordBean wordBean) {
-        // 设置单词标题
+        // 设置单词标题（居中）
         String title = wordBean.getTitle();
         if (!TextUtils.isEmpty(title)) {
             titleTv1.setText(title);
+            titleTv1.setGravity(android.view.Gravity.CENTER);
         }
 
-        // 设置音标
-        String phonetic = wordBean.getPhonetic();
-        if (!TextUtils.isEmpty(phonetic)) {
-            phoneticTv.setText(phonetic);
-            phoneticTv.setVisibility(View.VISIBLE);
+        // 设置音标（优先使用新的英式/美式音标）
+        String phoneticText = "";
+        String ukPhonetic = wordBean.getUkPhonetic();
+        String usPhonetic = wordBean.getUsPhonetic();
+        
+        // 检查是否是默认的"暂无"提示
+        boolean hasUkPhonetic = !TextUtils.isEmpty(ukPhonetic) && !ukPhonetic.equals("暂无英音音标");
+        boolean hasUsPhonetic = !TextUtils.isEmpty(usPhonetic) && !usPhonetic.equals("暂无美音音标");
+        
+        if (hasUkPhonetic || hasUsPhonetic) {
+            String uk = hasUkPhonetic ? ukPhonetic : "暂无英音音标";
+            String us = hasUsPhonetic ? usPhonetic : "暂无美音音标";
+            phoneticText = "英 " + uk + "  美 " + us;
+        } else if (!TextUtils.isEmpty(wordBean.getPhonetic())) {
+            phoneticText = wordBean.getPhonetic();
         } else {
-            phoneticTv.setVisibility(View.GONE);
+            // 如果都没有，显示默认提示
+            phoneticText = "英 暂无英音音标  美 暂无美音音标";
         }
+        
+        phoneticTv.setText(phoneticText);
+        phoneticTv.setVisibility(View.VISIBLE);
+        phoneticTv.setGravity(android.view.Gravity.CENTER);
 
         // 设置中文释义
         String tran = wordBean.getTran();
@@ -94,19 +117,92 @@ public class WordDescActivity extends AppCompatActivity {
             tranTv.setVisibility(View.VISIBLE);
         }
 
-        // 设置音频
+        // 设置英音/美音按钮
+        String ukAudio = wordBean.getUkAudio();
+        String usAudio = wordBean.getUsAudio();
+        
+        if (!TextUtils.isEmpty(ukAudio) && !ukAudio.startsWith("http://") && !ukAudio.startsWith("https://")) {
+            // 如果audio不是有效URL，忽略
+            ukAudio = null;
+        }
+        if (!TextUtils.isEmpty(usAudio) && !usAudio.startsWith("http://") && !usAudio.startsWith("https://")) {
+            usAudio = null;
+        }
+        
+        if (!TextUtils.isEmpty(ukAudio)) {
+            ukAudioBtn.setVisibility(View.VISIBLE);
+            String finalUkAudio = ukAudio;
+            ukAudioBtn.setOnClickListener(v -> AudioPlayer.playAudio(finalUkAudio));
+        } else {
+            ukAudioBtn.setVisibility(View.GONE);
+        }
+        
+        if (!TextUtils.isEmpty(usAudio)) {
+            usAudioBtn.setVisibility(View.VISIBLE);
+            String finalUsAudio = usAudio;
+            usAudioBtn.setOnClickListener(v -> AudioPlayer.playAudio(finalUsAudio));
+        } else {
+            usAudioBtn.setVisibility(View.GONE);
+        }
+        
+        // 兼容旧的audioUrl字段（如果没有英音/美音，使用旧的audioUrl作为英音）
         audioUrl = wordBean.getAudioUrl();
-        if (!TextUtils.isEmpty(audioUrl)) {
-            audioBtn.setVisibility(View.VISIBLE);
-            audioBtn.setOnClickListener(v -> {
+        if (!TextUtils.isEmpty(audioUrl) && TextUtils.isEmpty(wordBean.getUkAudio()) && TextUtils.isEmpty(wordBean.getUsAudio())) {
+            // 使用旧的audioUrl作为英音
+            ukAudioBtn.setVisibility(View.VISIBLE);
+            ukAudioBtn.setOnClickListener(v -> {
                 if (!TextUtils.isEmpty(localAudioPath)) {
                     playAudio(localAudioPath);
                 } else {
                     downloadAudio();
                 }
             });
+        }
+        
+        // 显示词性释义列表
+        if (wordBean.getDetails() != null && !wordBean.getDetails().isEmpty()) {
+            detailsLayout.setVisibility(View.VISIBLE);
+            detailTitleTv.setVisibility(View.VISIBLE);
+            detailsLayout.removeAllViews();
+            
+            for (WordBean.WordDetail detail : wordBean.getDetails()) {
+                TextView tv = new TextView(this);
+                String text = "";
+                if (!TextUtils.isEmpty(detail.getPartOfSpeech())) {
+                    text = detail.getPartOfSpeech() + "：";
+                }
+                text += detail.getMeaning();
+                tv.setText(text);
+                tv.setTextSize(16);
+                tv.setTextColor(ContextCompat.getColor(this, android.R.color.black));
+                tv.setPadding(0, 8, 0, 8);
+                detailsLayout.addView(tv);
+            }
         } else {
-            audioBtn.setVisibility(View.GONE);
+            detailsLayout.setVisibility(View.GONE);
+        }
+        
+        // 显示例句
+        if (!TextUtils.isEmpty(wordBean.getExample())) {
+            exampleTv.setText(wordBean.getExample());
+            exampleLabelTv.setVisibility(View.VISIBLE);
+            View exampleParent = (View) exampleTv.getParent();
+            if (exampleParent != null) {
+                exampleParent.setVisibility(View.VISIBLE);
+            }
+            
+            if (!TextUtils.isEmpty(wordBean.getExampleAudio())) {
+                exampleAudioBtn.setVisibility(View.VISIBLE);
+                exampleAudioBtn.setOnClickListener(v -> AudioPlayer.playAudio(wordBean.getExampleAudio()));
+            } else {
+                exampleAudioBtn.setVisibility(View.GONE);
+            }
+        } else {
+            exampleLabelTv.setVisibility(View.GONE);
+            View exampleParent = (View) exampleTv.getParent();
+            if (exampleParent != null) {
+                exampleParent.setVisibility(View.GONE);
+            }
         }
 
         // 解析并格式化详细释义
@@ -129,20 +225,11 @@ public class WordDescActivity extends AppCompatActivity {
                 noDescTv.setVisibility(View.GONE);
                 detailTitleTv.setVisibility(View.VISIBLE);
                 
-                // 提取第一个词性显示在标签中
-                String firstPartOfSpeech = extractFirstPartOfSpeech(desc);
-                if (!TextUtils.isEmpty(firstPartOfSpeech)) {
-                    partOfSpeechTv.setText(firstPartOfSpeech.toUpperCase());
-                    partOfSpeechTv.setVisibility(View.VISIBLE);
-                } else {
-                    partOfSpeechTv.setVisibility(View.GONE);
-                }
             }
         } else {
             descTv.setVisibility(View.GONE);
             noDescTv.setVisibility(View.VISIBLE);
             detailTitleTv.setVisibility(View.GONE);
-            partOfSpeechTv.setVisibility(View.GONE);
         }
     }
 
@@ -287,6 +374,7 @@ public class WordDescActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         releasePlayer();
+        AudioPlayer.release(); // 释放AudioPlayer资源
         if (downloadTask != null) {
             downloadTask.cancel(true);
         }

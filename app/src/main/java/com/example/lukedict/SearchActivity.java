@@ -627,6 +627,7 @@ public class SearchActivity extends AppCompatActivity {
      */
     private class SearchWordTask extends AsyncTask<String, Void, List<WordBean>> {
         private retrofit2.Call<BaiduTranslateResponse> translationCall; // 用于取消网络请求
+        private retrofit2.Call<List<DictionaryResponse>> dictionaryCall; // 词典API请求
 
         @Override
         protected void onPreExecute() {
@@ -643,6 +644,10 @@ public class SearchActivity extends AppCompatActivity {
                     translationCall.cancel();
                     translationCall = null;
                 }
+                if (dictionaryCall != null) {
+                    dictionaryCall.cancel();
+                    dictionaryCall = null;
+                }
                 return true;
             }
             return false;
@@ -654,120 +659,220 @@ public class SearchActivity extends AppCompatActivity {
             
             // 先查询本地词库
             List<WordBean> localResults = SearchUtils.searchLocal(word);
+            WordBean wordBean;
             
-            // 使用百度翻译API获取中文翻译
+            // 如果本地有结果，使用本地结果；否则创建新的WordBean
+            if (localResults != null && !localResults.isEmpty()) {
+                wordBean = localResults.get(0);
+            } else {
+                wordBean = new WordBean(word);
+                // 初始化默认值
+                wordBean.setUkPhonetic("暂无英音音标");
+                wordBean.setUsPhonetic("暂无美音音标");
+            }
+            
+            // 1. 调用百度翻译API获取中文翻译
+            String translatedText = "";
             try {
-                // 检查任务是否已取消
                 if (checkCancelled()) return localResults != null ? localResults : new ArrayList<>();
 
-                // 百度翻译API配置
                 String BAIDU_APP_ID = "20251226002527897";
                 String BAIDU_SECRET_KEY = "2bQ5B2RfBc5D_9_oYIiB";
                 
-                // 检查是否已配置（修复：检查是否为占位符）
                 if (BAIDU_APP_ID == null || BAIDU_APP_ID.isEmpty() || 
                     "你的APP_ID".equals(BAIDU_APP_ID) ||
                     BAIDU_SECRET_KEY == null || BAIDU_SECRET_KEY.isEmpty() ||
                     "你的SECRET_KEY".equals(BAIDU_SECRET_KEY)) {
-                    android.util.Log.w("SearchActivity", "百度翻译API未配置，使用本地词库");
-                    return localResults != null ? localResults : new ArrayList<>();
-                }
-                
-                // 在执行网络请求前检查是否已取消
-                if (checkCancelled()) {
-                    return localResults != null ? localResults : new ArrayList<>();
-                }
-                
-                // 生成签名（百度翻译API要求）- 优化salt生成，增加随机数
-                String salt = System.currentTimeMillis() + "" + new java.util.Random().nextInt(1000);
-                String signStr = BAIDU_APP_ID + word + salt + BAIDU_SECRET_KEY;
-                String sign = MD5Utils.md5(signStr);
-                
-                // 调用百度翻译API
-                translationCall = RetrofitClient.getBaiduTranslateApi()
-                        .translate(word, "en", "zh", BAIDU_APP_ID, salt, sign);
-                
-                // 再次检查是否已取消（在请求执行前）
-                if (checkCancelled()) {
-                    return localResults != null ? localResults : new ArrayList<>();
-                }
-                
-                retrofit2.Response<BaiduTranslateResponse> response = translationCall.execute();
-                
-                // 请求完成后，检查是否已取消
-                if (checkCancelled()) {
-                    return localResults != null ? localResults : new ArrayList<>();
-                }
-                
-                if (response.isSuccessful() && response.body() != null) {
-                    BaiduTranslateResponse resp = response.body();
-                    String translatedText = "";
-                    
-                    // 解析百度翻译响应
-                    if (resp.getTransResult() != null && !resp.getTransResult().isEmpty()) {
-                        translatedText = resp.getTransResult().get(0).getDst();
-                    }
-                    
-                    // 请求成功，释放资源
-                    translationCall = null;
-                    
-                    // 如果本地有结果，更新翻译；否则创建新结果
-                    if (localResults != null && !localResults.isEmpty()) {
-                        if (!TextUtils.isEmpty(translatedText)) {
-                            localResults.get(0).setTran(translatedText);
-                        }
-                        return localResults;
-                    } else if (!TextUtils.isEmpty(translatedText)) {
-                        // 创建新的WordBean，只有翻译结果
-                        WordBean bean = new WordBean(word, translatedText, "翻译结果：" + translatedText, "", "");
-                        List<WordBean> result = new ArrayList<>();
-                        result.add(bean);
-                        android.util.Log.d("SearchActivity", "百度翻译成功: " + word + " -> " + translatedText);
-                        return result;
-                    }
+                    android.util.Log.w("SearchActivity", "百度翻译API未配置");
                 } else {
-                    // 请求失败，释放资源
-                    translationCall = null;
+                    if (checkCancelled()) return localResults != null ? localResults : new ArrayList<>();
                     
-                    // 安全处理errorBody
-                    String errorMsg = "未知错误";
-                    if (response.errorBody() != null) {
-                        try {
-                            java.io.InputStream inputStream = response.errorBody().byteStream();
-                            java.io.BufferedReader reader = new java.io.BufferedReader(
-                                    new java.io.InputStreamReader(inputStream, java.nio.charset.StandardCharsets.UTF_8));
-                            StringBuilder sb = new StringBuilder();
-                            String line;
-                            while ((line = reader.readLine()) != null) {
-                                sb.append(line);
-                            }
-                            errorMsg = sb.toString();
-                            reader.close();
-                            inputStream.close();
-                        } catch (java.io.IOException ex) {
-                            errorMsg = "读取错误信息失败";
-                            android.util.Log.w("SearchActivity", "读取错误信息失败", ex);
+                    String salt = System.currentTimeMillis() + "" + new java.util.Random().nextInt(1000);
+                    String signStr = BAIDU_APP_ID + word + salt + BAIDU_SECRET_KEY;
+                    String sign = MD5Utils.md5(signStr);
+                    
+                    translationCall = RetrofitClient.getBaiduTranslateApi()
+                            .translate(word, "en", "zh", BAIDU_APP_ID, salt, sign);
+                    
+                    if (checkCancelled()) return localResults != null ? localResults : new ArrayList<>();
+                    
+                    retrofit2.Response<BaiduTranslateResponse> response = translationCall.execute();
+                    
+                    if (checkCancelled()) return localResults != null ? localResults : new ArrayList<>();
+                    
+                    if (response.isSuccessful() && response.body() != null) {
+                        BaiduTranslateResponse resp = response.body();
+                        if (resp.getTransResult() != null && !resp.getTransResult().isEmpty()) {
+                            translatedText = resp.getTransResult().get(0).getDst();
                         }
                     }
-                    android.util.Log.w("SearchActivity", "百度翻译API响应失败，状态码: " + response.code() + ", 错误: " + errorMsg);
+                    translationCall = null;
                 }
-            } catch (java.io.InterruptedIOException e) {
-                // 请求被中断（通常是任务被取消），这是正常情况，不需要记录错误
-                android.util.Log.d("SearchActivity", "翻译API请求被中断（任务已取消）");
-                checkCancelled(); // 使用统一方法释放资源
             } catch (Exception e) {
-                // 网络请求失败，记录日志但不影响主流程
-                android.util.Log.w("SearchActivity", "翻译API请求失败，使用本地词库: " + e.getMessage());
-                e.printStackTrace();
-            } finally {
-                // 任务取消时取消网络请求
-                if (isCancelled() && translationCall != null) {
-                    checkCancelled(); // 使用统一方法释放资源
-                }
+                android.util.Log.w("SearchActivity", "百度翻译失败: " + e.getMessage());
             }
             
-            // 网络请求失败或未配置，返回本地词库结果
-            return localResults != null ? localResults : new ArrayList<>();
+            // 设置翻译结果
+            if (!TextUtils.isEmpty(translatedText)) {
+                wordBean.setTran(translatedText);
+            }
+            
+            // 2. 调用词典API获取详细信息（音标、词性、例句等）
+            try {
+                if (checkCancelled()) {
+                    List<WordBean> result = new ArrayList<>();
+                    result.add(wordBean);
+                    return result;
+                }
+                
+                String DICT_API_KEY = "ab3b1502-9724-4a43-ae91-23f3c3c11890";
+                dictionaryCall = RetrofitClient.getInstance()
+                        .getDictionaryApi()
+                        .getWordDetails(word, DICT_API_KEY);
+                
+                if (checkCancelled()) {
+                    List<WordBean> result = new ArrayList<>();
+                    result.add(wordBean);
+                    return result;
+                }
+                
+                retrofit2.Response<List<DictionaryResponse>> dictResponse = dictionaryCall.execute();
+                
+                if (checkCancelled()) {
+                    List<WordBean> result = new ArrayList<>();
+                    result.add(wordBean);
+                    return result;
+                }
+                
+                if (dictResponse.isSuccessful() && dictResponse.body() != null && !dictResponse.body().isEmpty()) {
+                    DictionaryResponse dictResp = dictResponse.body().get(0);
+                    android.util.Log.d("SearchActivity", "词典API响应成功，开始解析");
+                    parseDictionaryResponse(dictResp, wordBean);
+                } else {
+                    android.util.Log.w("SearchActivity", "词典API响应失败或为空 - code: " + dictResponse.code());
+                    if (dictResponse.errorBody() != null) {
+                        try {
+                            String errorBody = dictResponse.errorBody().string();
+                            android.util.Log.w("SearchActivity", "错误响应: " + errorBody);
+                        } catch (Exception ex) {
+                            android.util.Log.w("SearchActivity", "读取错误响应失败", ex);
+                        }
+                    }
+                }
+                dictionaryCall = null;
+            } catch (Exception e) {
+                android.util.Log.e("SearchActivity", "词典API失败: " + e.getMessage(), e);
+                e.printStackTrace();
+            }
+            
+            List<WordBean> result = new ArrayList<>();
+            result.add(wordBean);
+            return result;
+        }
+        
+        /**
+         * 解析词典API响应，填充WordBean
+         */
+        private void parseDictionaryResponse(DictionaryResponse dictResp, WordBean wordBean) {
+            try {
+                android.util.Log.d("SearchActivity", "开始解析词典响应");
+                
+                // 解析音标和发音
+                if (dictResp.getHwi() != null) {
+                    DictionaryResponse.Hwi hwi = dictResp.getHwi();
+                    if (hwi.getPrs() != null && !hwi.getPrs().isEmpty()) {
+                        // 遍历所有发音，区分英音和美音
+                        String ukPhonetic = "";
+                        String usPhonetic = "";
+                        String ukAudio = "";
+                        String usAudio = "";
+                        
+                        for (DictionaryResponse.Prs prs : hwi.getPrs()) {
+                            String phonetic = prs.getMw();
+                            String audioUrl = null;
+                            
+                            // 构建音频URL
+                            if (prs.getSound() != null && prs.getSound().getAudio() != null) {
+                                String audioFile = prs.getSound().getAudio();
+                                // Merriam-Webster音频URL格式
+                                // 英音: https://media.merriam-webster.com/audio/prons/en/gb/mp3/{subdirectory}/{audioFile}.mp3
+                                // 美音: https://media.merriam-webster.com/audio/prons/en/us/mp3/{subdirectory}/{audioFile}.mp3
+                                if (audioFile.length() > 0) {
+                                    String subdir = audioFile.substring(0, 1);
+                                    // 默认使用美音URL（Merriam-Webster主要提供美音）
+                                    audioUrl = "https://media.merriam-webster.com/audio/prons/en/us/mp3/" + subdir + "/" + audioFile + ".mp3";
+                                }
+                            }
+                            
+                            // 判断是英音还是美音（Merriam-Webster主要提供美音，这里简化处理）
+                            if (TextUtils.isEmpty(usPhonetic)) {
+                                usPhonetic = phonetic != null ? phonetic : "";
+                                usAudio = audioUrl != null ? audioUrl : "";
+                            } else if (TextUtils.isEmpty(ukPhonetic)) {
+                                ukPhonetic = phonetic != null ? phonetic : "";
+                                ukAudio = audioUrl != null ? audioUrl : "";
+                            }
+                        }
+                        
+                        // 设置音标和音频
+                        if (!TextUtils.isEmpty(ukPhonetic)) {
+                            wordBean.setUkPhonetic(ukPhonetic);
+                        }
+                        if (!TextUtils.isEmpty(usPhonetic)) {
+                            wordBean.setUsPhonetic(usPhonetic);
+                        }
+                        // 如果没有区分，使用第一个作为美音
+                        if (TextUtils.isEmpty(usPhonetic) && !hwi.getPrs().isEmpty()) {
+                            DictionaryResponse.Prs firstPrs = hwi.getPrs().get(0);
+                            if (firstPrs.getMw() != null) {
+                                wordBean.setUsPhonetic(firstPrs.getMw());
+                            }
+                            if (firstPrs.getSound() != null && firstPrs.getSound().getAudio() != null) {
+                                String audioFile = firstPrs.getSound().getAudio();
+                                if (audioFile.length() > 0) {
+                                    String subdir = audioFile.substring(0, 1);
+                                    String audioUrl = "https://media.merriam-webster.com/audio/prons/en/us/mp3/" + subdir + "/" + audioFile + ".mp3";
+                                    wordBean.setUsAudio(audioUrl);
+                                    wordBean.setUkAudio(audioUrl); // 如果没有英音，使用美音
+                                }
+                            }
+                        } else {
+                            if (!TextUtils.isEmpty(usAudio)) {
+                                wordBean.setUsAudio(usAudio);
+                            }
+                            if (!TextUtils.isEmpty(ukAudio)) {
+                                wordBean.setUkAudio(ukAudio);
+                            } else if (!TextUtils.isEmpty(usAudio)) {
+                                // 如果没有英音URL，使用美音URL
+                                wordBean.setUkAudio(usAudio);
+                            }
+                        }
+                        
+                        android.util.Log.d("SearchActivity", "音标解析完成 - 英音: " + wordBean.getUkPhonetic() + ", 美音: " + wordBean.getUsPhonetic());
+                    }
+                }
+                
+                // 解析简短定义作为词性释义
+                if (dictResp.getShortdef() != null && !dictResp.getShortdef().isEmpty()) {
+                    List<WordBean.WordDetail> details = new ArrayList<>();
+                    for (String def : dictResp.getShortdef()) {
+                        details.add(new WordBean.WordDetail("", def));
+                    }
+                    wordBean.setDetails(details);
+                    android.util.Log.d("SearchActivity", "解析到 " + details.size() + " 条释义");
+                }
+                
+                // 解析例句（从def中提取）
+                if (dictResp.getDef() != null && !dictResp.getDef().isEmpty()) {
+                    // 简化处理：使用shortdef的第一条作为例句
+                    if (dictResp.getShortdef() != null && !dictResp.getShortdef().isEmpty()) {
+                        wordBean.setExample(dictResp.getShortdef().get(0));
+                    }
+                }
+            } catch (Exception e) {
+                android.util.Log.e("SearchActivity", "解析词典响应失败", e);
+                e.printStackTrace();
+            }
         }
 
         @Override
