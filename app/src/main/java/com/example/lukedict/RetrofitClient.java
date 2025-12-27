@@ -1,44 +1,65 @@
 package com.example.lukedict;
 
+import retrofit2.Call;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
+import retrofit2.http.Field;
+import retrofit2.http.FormUrlEncoded;
+import retrofit2.http.POST;
 
-/**
- * Retrofit单例客户端（解决TranslationManager编译错误）
- */
 public class RetrofitClient {
-    private static final String BASE_URL = "https://fanyi-api.baidu.com/"; // 百度翻译API基础地址（不包含路径）
     private static RetrofitClient instance;
-    private final Retrofit retrofit;
-    
-    // 获取BASE_URL（用于检查是否配置）
-    public String getBaseUrl() {
-        return BASE_URL;
-    }
+    private Retrofit retrofit;
+    private static final String BASE_URL_BAIDU = "https://fanyi-api.baidu.com/";
 
+
+    public Retrofit getRetrofit() {
+        return retrofit;
+    }
     private RetrofitClient() {
         retrofit = new Retrofit.Builder()
-                .baseUrl(BASE_URL)
+                .baseUrl(BASE_URL_BAIDU)
                 .addConverterFactory(GsonConverterFactory.create())
                 .build();
     }
-
-    // 获取单例
     public static synchronized RetrofitClient getInstance() {
         if (instance == null) {
             instance = new RetrofitClient();
         }
         return instance;
     }
-
-    // 获取百度翻译API
-    public BaiduTranslateApi getBaiduTranslateApi() {
-        return retrofit.create(BaiduTranslateApi.class);
-    }
-    
-    // 兼容旧接口（已废弃，建议使用getBaiduTranslateApi）
     @Deprecated
-    public TranslationApi getTranslationApi() {
-        return retrofit.create(TranslationApi.class);
+    public BaiduTranslateApi getTranslationApi() {
+        throw new UnsupportedOperationException("已废弃，请使用百度翻译接口");
+    }
+
+    // 单例Retrofit实例
+    private static Retrofit getBaiduRetrofitInstance() {
+        return new Retrofit.Builder()
+                .baseUrl(BASE_URL_BAIDU)
+                .addConverterFactory(GsonConverterFactory.create())
+                // 如需添加拦截器传递appid、签名等参数，这里配置
+                // .client(okHttpClient)
+                .build();
+    }
+
+    // 构建百度翻译API的接口服务
+    public static BaiduTranslateApi getBaiduTranslateApi() {
+        return getBaiduRetrofitInstance().create(BaiduTranslateApi.class);
+    }
+
+    // 百度翻译API接口定义
+    public interface BaiduTranslateApi {
+        // 接口路径：api/trans/vip/translate（不能以/开头）
+        @POST("api/trans/vip/translate")
+        @FormUrlEncoded
+        Call<BaiduTranslateResponse> translate(
+                @Field("q") String query,       // 要翻译的文本
+                @Field("from") String from,     // 源语言
+                @Field("to") String to,         // 目标语言
+                @Field("appid") String appid,   // 百度翻译APPID
+                @Field("salt") String salt,     // 随机数
+                @Field("sign") String sign      // 签名（appid+q+salt+密钥的MD5）
+        );
     }
 }

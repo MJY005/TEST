@@ -2,8 +2,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     package="com.example.lukedict">
-    <!-- 网络访问权限：允许应用访问互联网 -->
-    <uses-permission android:name="android.permission.INTERNET" />
     <!-- 网络状态权限：允许应用获取当前网络连接状态 -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
@@ -19,13 +17,13 @@
         tools:targetApi="m">
         <activity
             android:name=".FeedbackActivity"
-            android:exported="true" >
+            android:exported="false" >
 
         </activity>
 
         <activity
             android:name=".AboutActivity"
-            android:exported="true"> </activity>
+            android:exported="false"> </activity>
         <activity
             android:name=".WordDescActivity"
             android:exported="false" />
@@ -34,48 +32,48 @@
             android:exported="false" />
         <activity
             android:name="readinggrid.ReadingDescActivity"
-            android:exported="true" >
+            android:exported="false" >
 
         </activity>
         <activity
             android:name="readinggrid.reading_grid_Activity"
-            android:exported="true" >
+            android:exported="false" >
 
         </activity>
         <activity
             android:name=".ChatActivity"
-            android:exported="true"
+            android:exported="false"
             android:label="客服" >
 
         </activity>
         <activity
             android:name=".ReadActivity"
-            android:exported="true"
+            android:exported="false"
             android:label="美文阅读" >
 
         </activity>
         <activity
             android:name=".SearchActivity"
-            android:exported="true"
+            android:exported="false"
             android:label="单词查询" >
 
         </activity>
         <activity
             android:name=".Main_menu"
-            android:exported="true"
+            android:exported="false"
             android:label="Luke English" />
         <activity
             android:name=".loginPage"
             android:exported="false" />
         <activity
             android:name=".RegisterActivity"
-            android:exported="true" />
+            android:exported="false" />
         <activity
             android:name=".LoginActivity"
-            android:exported="true" />
+            android:exported="false" />
         <activity
             android:name=".UserManagementActivity"
-            android:exported="true"
+            android:exported="false"
             android:label="用户管理" />
         <activity
             android:name=".MainActivity"
@@ -87,14 +85,6 @@
             </intent-filter>
         </activity>
 
-        <activity
-            android:name=".MainActivity"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
     </application>
 
 </manifest>

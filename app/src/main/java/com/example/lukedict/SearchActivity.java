@@ -265,9 +265,9 @@
 ////        String sign = MD5Utils.md5(appid + text + salt + secretKey);
 ////
 ////        try {
-////            Call<BaiduTranslateResponse> call = RetrofitClient.getBaiduApi()
+////            Call<BaiduBaiduTranslateRespone> call = RetrofitClient.getBaiduApi()
 ////                    .translate(text, "en", "zh", appid, salt, sign);
-////            Response<BaiduTranslateResponse> resp = call.execute();
+////            Response<BaiduBaiduTranslateRespone> resp = call.execute();
 ////            if (resp.isSuccessful() && resp.body() != null
 ////                    && resp.body().getTransResult() != null
 ////                    && !resp.body().getTransResult().isEmpty()) {
@@ -329,9 +329,9 @@
 //        RetrofitClient.getInstance()
 //                .getBaiduTranslateApi()
 //                .translate(word, "en", "zh", BAIDU_APP_ID, salt, sign)
-//                .enqueue(new Callback<BaiduTranslateResponse>() {
+//                .enqueue(new Callback<BaiduBaiduTranslateRespone>() {
 //                    @Override
-//                    public void onResponse(Call<BaiduTranslateResponse> call, Response<BaiduTranslateResponse> response) {
+//                    public void onResponse(Call<BaiduBaiduTranslateRespone> call, Response<BaiduBaiduTranslateRespone> response) {
 //                        if (response.isSuccessful() && response.body() != null) {
 //                            handleTranslateSuccess(response.body(), word);
 //                        } else {
@@ -340,14 +340,14 @@
 //                    }
 //
 //                    @Override
-//                    public void onFailure(Call<BaiduTranslateResponse> call, Throwable t) {
+//                    public void onFailure(Call<BaiduBaiduTranslateRespone> call, Throwable t) {
 //                        showError("网络错误：" + t.getMessage());
 //                    }
 //                });
 //    }
 //
 //    // 3. 处理翻译成功结果
-//    private void handleTranslateSuccess(BaiduTranslateResponse response, String originalWord) {
+//    private void handleTranslateSuccess(BaiduBaiduTranslateRespone response, String originalWord) {
 //        if (response.getTransResult() == null || response.getTransResult().isEmpty()) {
 //            resultTv.setText("未找到翻译结果");
 //            return;
@@ -374,8 +374,11 @@
 
 package com.example.lukedict;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.ViewModel;
+import androidx.lifecycle.ViewModelProvider;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -386,10 +389,13 @@ import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.inputmethod.EditorInfo;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.IOException;
@@ -400,6 +406,66 @@ import retrofit2.Call;
 import retrofit2.Response;
 
 public class SearchActivity extends AppCompatActivity {
+    private EditText etWord;
+    private Button btnSearch;
+    private ProgressBar progressBar;
+    private TextView tvResult;
+    private TextView tvError;
+    private WordViewModel viewModel;
+
+
+
+    private void initViews() {
+        etWord = findViewById(R.id.et_word);
+        btnSearch = findViewById(R.id.btn_search);
+        progressBar = findViewById(R.id.progress_bar);
+        tvResult = findViewById(R.id.tv_result);
+        tvError = findViewById(R.id.tv_error);
+    }
+
+    private void initViewModel() {
+        viewModel = new ViewModelProvider(this, new ViewModelProvider.Factory() {
+            @NonNull
+            @Override
+            public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
+                return (T) new WordViewModel(getApplicationContext());
+            }
+        }).get(WordViewModel.class);
+
+        viewModel.getWordLiveData().observe(this, word -> {
+            tvResult.setText(word.getWord() + "：" + word.getTranslation());
+            tvResult.setVisibility(View.VISIBLE);
+            tvError.setVisibility(View.GONE);
+        });
+
+        viewModel.getErrorLiveData().observe(this, errorMsg -> {
+            tvError.setText(errorMsg);
+            tvError.setVisibility(View.VISIBLE);
+            tvResult.setVisibility(View.GONE);
+        });
+
+        viewModel.getLoadingLiveData().observe(this, isLoading -> {
+            progressBar.setVisibility(isLoading ? View.VISIBLE : View.GONE);
+            btnSearch.setEnabled(!isLoading);
+        });
+    }
+
+    private void setupListeners() {
+        btnSearch.setOnClickListener(v -> {
+            String word = etWord.getText().toString().trim();
+            viewModel.queryWord(word);
+        });
+
+        // 软键盘回车查询
+        etWord.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                String word = etWord.getText().toString().trim();
+                viewModel.queryWord(word);
+                return true;
+            }
+            return false;
+        });
+    }
     private static final String PREFS_NAME = "UserPrefs";
     private static final String KEY_CURRENT_USER = "current_username";
 
@@ -422,6 +488,7 @@ public class SearchActivity extends AppCompatActivity {
         // 获取当前登录用户
         currentUsername = getCurrentUsername();
         showActionBar();
+        initViewModel();
         initView();
         initListener();
     }
@@ -782,12 +849,12 @@ public class SearchActivity extends AppCompatActivity {
      */
     private String translateToChinese(String text) {
         try {
-            Call<TranslationResponse> call = RetrofitClient.getInstance()
+            Call<BaiduTranslateResponse> call = RetrofitClient.getInstance()
                     .getTranslationApi()
                     .translate(text, "en", "zh");
-            Response<TranslationResponse> resp = call.execute();
+            Response<BaiduTranslateResponse> resp = call.execute();
             if (resp.isSuccessful() && resp.body() != null) {
-                TranslationResponse body = resp.body();
+               BaiduTranslateResponse body = resp.body();
                 if (body.getResponseData() != null) {
                     return body.getResponseData().getTranslatedText();
                 } else if (body.trans_result != null && !body.trans_result.isEmpty()) {

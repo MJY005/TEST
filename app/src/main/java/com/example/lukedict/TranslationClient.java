@@ -8,9 +8,9 @@ import retrofit2.converter.gson.GsonConverterFactory;
  */
 public class TranslationClient {
     private static final String BASE_URL = "https://api.mymemory.translated.net/";
-    private static TranslationApi api;
+    private static BaiduTranslateApi api;
 
-    public static TranslationApi getApi() {
+    public static BaiduTranslateApi getApi() {
         if (api == null) {
             synchronized (TranslationClient.class) {
                 if (api == null) {
@@ -18,7 +18,7 @@ public class TranslationClient {
                             .baseUrl(BASE_URL)
                             .addConverterFactory(GsonConverterFactory.create())
                             .build();
-                    api = retrofit.create(TranslationApi.class);
+                    api = retrofit.create(BaiduTranslateApi.class);
                 }
             }
         }
