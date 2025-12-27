@@ -4,6 +4,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.view.Menu;
 import android.view.View;
 import android.widget.Button;
@@ -13,7 +14,6 @@ import android.widget.Toast;
 import readinggrid.reading_grid_Activity;
 
 public class Main_menu extends AppCompatActivity implements View.OnClickListener {
-    private Button blockUserManagement;
     private ImageView block1;
     private ImageView block2;
     private ImageView block3;
@@ -21,8 +21,16 @@ public class Main_menu extends AppCompatActivity implements View.OnClickListener
 
     public void showToast(){
         String message = getIntent().getStringExtra("message");
-        String age=getIntent().getStringExtra("age");
-        Toast.makeText(this,message+"，欢迎您！", Toast.LENGTH_LONG).show();
+        String age = getIntent().getStringExtra("age");
+        // 优化提示文本，避免过长导致显示不全
+        if (!TextUtils.isEmpty(message)) {
+            // 如果用户名过长，简化提示文本
+            String toastText = message.length() > 10 ? "登录成功，欢迎使用！" : message + "，欢迎您！";
+            Toast.makeText(this, toastText, Toast.LENGTH_LONG).show();
+        } else {
+            // 如果没有传递用户名，显示通用提示
+            Toast.makeText(this, "登录成功，欢迎使用！", Toast.LENGTH_LONG).show();
+        }
     }
 
     @Override
@@ -40,12 +48,10 @@ public class Main_menu extends AppCompatActivity implements View.OnClickListener
     }
 
     private void initWidget() {
-        blockUserManagement = findViewById(R.id.block_user_management);
         block1 = (ImageView) findViewById(R.id.block_1);
         block2 = (ImageView) findViewById(R.id.block_2);
         block3 = (ImageView) findViewById(R.id.block_3);
         block4 = (ImageView) findViewById(R.id.block_4);
-        blockUserManagement.setOnClickListener(this);
         block1.setOnClickListener(this);
         block2.setOnClickListener(this);
         block3.setOnClickListener(this);
@@ -55,10 +61,6 @@ public class Main_menu extends AppCompatActivity implements View.OnClickListener
     @Override
     public void onClick(View v) {
         switch (v.getId()){
-            case R.id.block_user_management:
-                Intent userMgmtIntent = new Intent(Main_menu.this, UserManagementActivity.class);
-                startActivity(userMgmtIntent);
-                break;
             case R.id.block_1:
                 Intent intent = new Intent(Main_menu.this,SearchActivity.class);
                 startActivity(intent);

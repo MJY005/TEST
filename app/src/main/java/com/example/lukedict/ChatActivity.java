@@ -93,7 +93,7 @@ public class ChatActivity extends AppCompatActivity {
     private  void initMsgs(){
         Msg msg1 = new Msg("你好！",Msg.TYPE_RECEIVED);
         msgList.add(msg1);
-        Msg msg2 = new Msg("欢迎使用Luke English！",Msg.TYPE_RECEIVED);
+        Msg msg2 = new Msg("欢迎使用LAT English！",Msg.TYPE_RECEIVED);
         msgList.add(msg2);
         Msg msg3 = new Msg("我是客服小苏，很高兴为你服务！有事请留言，我会尽快回复",Msg.TYPE_RECEIVED);
         msgList.add(msg3);

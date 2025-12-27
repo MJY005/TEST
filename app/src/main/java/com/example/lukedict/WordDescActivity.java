@@ -87,17 +87,90 @@ public class WordDescActivity extends AppCompatActivity {
         String phoneticText = "";
         String ukPhonetic = wordBean.getUkPhonetic();
         String usPhonetic = wordBean.getUsPhonetic();
+        String generalPhonetic = wordBean.getPhonetic();
+        String ukAudio = wordBean.getUkAudio();
+        String usAudio = wordBean.getUsAudio();
+        String generalAudioUrl = wordBean.getAudioUrl();
         
-        // 检查是否是默认的"暂无"提示
-        boolean hasUkPhonetic = !TextUtils.isEmpty(ukPhonetic) && !ukPhonetic.equals("暂无英音音标");
-        boolean hasUsPhonetic = !TextUtils.isEmpty(usPhonetic) && !usPhonetic.equals("暂无美音音标");
+        // 检查音标是否为空（空字符串或null）
+        boolean hasUkPhonetic = !TextUtils.isEmpty(ukPhonetic) && !ukPhonetic.trim().isEmpty();
+        boolean hasUsPhonetic = !TextUtils.isEmpty(usPhonetic) && !usPhonetic.trim().isEmpty();
+        boolean hasGeneralPhonetic = !TextUtils.isEmpty(generalPhonetic) && !generalPhonetic.trim().isEmpty();
+        
+        // 检查是否有音频URL（用于判断是否应该显示"暂无音标"）
+        boolean hasUkAudio = !TextUtils.isEmpty(ukAudio) && (ukAudio.startsWith("http://") || ukAudio.startsWith("https://"));
+        boolean hasUsAudio = !TextUtils.isEmpty(usAudio) && (usAudio.startsWith("http://") || usAudio.startsWith("https://"));
+        boolean hasGeneralAudio = !TextUtils.isEmpty(generalAudioUrl) && (generalAudioUrl.startsWith("http://") || generalAudioUrl.startsWith("https://"));
         
         if (hasUkPhonetic || hasUsPhonetic) {
-            String uk = hasUkPhonetic ? ukPhonetic : "暂无英音音标";
-            String us = hasUsPhonetic ? usPhonetic : "暂无美音音标";
-            phoneticText = "英 " + uk + "  美 " + us;
-        } else if (!TextUtils.isEmpty(wordBean.getPhonetic())) {
-            phoneticText = wordBean.getPhonetic();
+            // 有英音或美音音标时，分别处理
+            String uk = "";
+            String us = "";
+            
+            if (hasUkPhonetic) {
+                uk = "/" + ukPhonetic + "/";
+            } else {
+                // 没有英音音标时，检查是否有音频或通用音标
+                if (hasUkAudio || hasGeneralAudio) {
+                    // 有音频时，如果有通用音标则使用，否则不显示"暂无"
+                    if (hasGeneralPhonetic) {
+                        uk = "/" + generalPhonetic.trim() + "/";
+                    }
+                    // 如果没有通用音标但有音频，不显示"暂无"，留空
+                } else {
+                    // 既没有音标也没有音频，显示"暂无"
+                    uk = "暂无英音音标";
+                }
+            }
+            
+            if (hasUsPhonetic) {
+                us = "/" + usPhonetic + "/";
+            } else {
+                // 没有美音音标时，检查是否有音频或通用音标
+                if (hasUsAudio || hasGeneralAudio) {
+                    // 有音频时，如果有通用音标则使用，否则不显示"暂无"
+                    if (hasGeneralPhonetic) {
+                        us = "/" + generalPhonetic.trim() + "/";
+                    }
+                    // 如果没有通用音标但有音频，不显示"暂无"，留空
+                } else {
+                    // 既没有音标也没有音频，显示"暂无"
+                    us = "暂无美音音标";
+                }
+            }
+            
+            // 构建显示文本
+            if (!TextUtils.isEmpty(uk) && !TextUtils.isEmpty(us)) {
+                phoneticText = "英 " + uk + "  美 " + us;
+            } else if (!TextUtils.isEmpty(uk)) {
+                phoneticText = "英 " + uk;
+            } else if (!TextUtils.isEmpty(us)) {
+                phoneticText = "美 " + us;
+            } else if (hasGeneralPhonetic) {
+                // 如果都没有但有通用音标，使用通用音标
+                String phonetic = generalPhonetic.trim();
+                if (!phonetic.startsWith("/") && !phonetic.endsWith("/")) {
+                    phoneticText = "/" + phonetic + "/";
+                } else {
+                    phoneticText = phonetic;
+                }
+            } else {
+                // 如果都没有且没有通用音标，显示默认提示
+                phoneticText = "英 暂无英音音标  美 暂无美音音标";
+            }
+        } else if (hasGeneralPhonetic) {
+            // 使用通用音标（兼容旧逻辑）
+            String phonetic = generalPhonetic.trim();
+            if (!phonetic.isEmpty()) {
+                // 如果音标没有/包裹，则添加
+                if (!phonetic.startsWith("/") && !phonetic.endsWith("/")) {
+                    phoneticText = "/" + phonetic + "/";
+                } else {
+                    phoneticText = phonetic;
+                }
+            } else {
+                phoneticText = "暂无音标";
+            }
         } else {
             // 如果都没有，显示默认提示
             phoneticText = "英 暂无英音音标  美 暂无美音音标";
@@ -118,45 +191,61 @@ public class WordDescActivity extends AppCompatActivity {
         }
 
         // 设置英音/美音按钮
-        String ukAudio = wordBean.getUkAudio();
-        String usAudio = wordBean.getUsAudio();
+        // ukAudio和usAudio已在上面声明，这里直接使用
+        audioUrl = wordBean.getAudioUrl();
         
+        // 验证并处理英音URL
         if (!TextUtils.isEmpty(ukAudio) && !ukAudio.startsWith("http://") && !ukAudio.startsWith("https://")) {
             // 如果audio不是有效URL，忽略
             ukAudio = null;
         }
-        if (!TextUtils.isEmpty(usAudio) && !usAudio.startsWith("http://") && !usAudio.startsWith("https://")) {
-            usAudio = null;
+        // 如果英音为空，尝试使用通用audioUrl作为备用
+        if (TextUtils.isEmpty(ukAudio) && !TextUtils.isEmpty(audioUrl)) {
+            if (audioUrl.startsWith("http://") || audioUrl.startsWith("https://")) {
+                ukAudio = audioUrl; // 使用通用audioUrl作为英音
+            }
         }
         
+        // 验证并处理美音URL
+        if (!TextUtils.isEmpty(usAudio) && !usAudio.startsWith("http://") && !usAudio.startsWith("https://")) {
+            // 如果audio不是有效URL，忽略
+            usAudio = null;
+        }
+        // 如果美音为空，尝试使用通用audioUrl作为备用
+        if (TextUtils.isEmpty(usAudio) && !TextUtils.isEmpty(audioUrl)) {
+            if (audioUrl.startsWith("http://") || audioUrl.startsWith("https://")) {
+                usAudio = audioUrl; // 使用通用audioUrl作为美音
+            }
+        }
+        
+        // 设置英音按钮
         if (!TextUtils.isEmpty(ukAudio)) {
             ukAudioBtn.setVisibility(View.VISIBLE);
             String finalUkAudio = ukAudio;
             ukAudioBtn.setOnClickListener(v -> AudioPlayer.playAudio(finalUkAudio));
         } else {
-            ukAudioBtn.setVisibility(View.GONE);
+            // 如果没有英音URL，检查是否有本地音频文件
+            if (!TextUtils.isEmpty(audioUrl) && !audioUrl.startsWith("http://") && !audioUrl.startsWith("https://")) {
+                ukAudioBtn.setVisibility(View.VISIBLE);
+                ukAudioBtn.setOnClickListener(v -> {
+                    if (!TextUtils.isEmpty(localAudioPath)) {
+                        playAudio(localAudioPath);
+                    } else {
+                        downloadAudio();
+                    }
+                });
+            } else {
+                ukAudioBtn.setVisibility(View.GONE);
+            }
         }
         
+        // 设置美音按钮
         if (!TextUtils.isEmpty(usAudio)) {
             usAudioBtn.setVisibility(View.VISIBLE);
             String finalUsAudio = usAudio;
             usAudioBtn.setOnClickListener(v -> AudioPlayer.playAudio(finalUsAudio));
         } else {
             usAudioBtn.setVisibility(View.GONE);
-        }
-        
-        // 兼容旧的audioUrl字段（如果没有英音/美音，使用旧的audioUrl作为英音）
-        audioUrl = wordBean.getAudioUrl();
-        if (!TextUtils.isEmpty(audioUrl) && TextUtils.isEmpty(wordBean.getUkAudio()) && TextUtils.isEmpty(wordBean.getUsAudio())) {
-            // 使用旧的audioUrl作为英音
-            ukAudioBtn.setVisibility(View.VISIBLE);
-            ukAudioBtn.setOnClickListener(v -> {
-                if (!TextUtils.isEmpty(localAudioPath)) {
-                    playAudio(localAudioPath);
-                } else {
-                    downloadAudio();
-                }
-            });
         }
         
         // 显示词性释义列表

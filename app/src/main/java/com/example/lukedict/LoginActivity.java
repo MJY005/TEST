@@ -103,7 +103,10 @@ public class LoginActivity extends AppCompatActivity {
                     }else{
                         sp.edit().putBoolean("autologin",false).apply();
                     }
-                    startActivity(new Intent(LoginActivity.this, Main_menu.class));
+                    // 传递用户名到主菜单，用于显示欢迎提示
+                    Intent intent = new Intent(LoginActivity.this, Main_menu.class);
+                    intent.putExtra("message", name);
+                    startActivity(intent);
                     finish(); // 关闭当前页面
                 });
             }

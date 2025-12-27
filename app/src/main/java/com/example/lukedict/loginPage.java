@@ -91,7 +91,7 @@ public class loginPage extends AppCompatActivity implements View.OnClickListener
         Notification.Builder builder = new Notification.Builder(this);
         builder.setContentInfo("Content info")
                 .setContentText("好好学习，天天向上！")//设置通知内容
-                .setContentTitle("欢迎使用Luke English!")//设置通知标题
+                .setContentTitle("欢迎使用LAT English!")//设置通知标题
                 .setLargeIcon(BitmapFactory.decodeResource(getResources(),R.mipmap.ic_launcher))
                 .setSmallIcon(R.mipmap.arrowicon)//不能缺少的一个属性
                 .setSubText("Subtext")

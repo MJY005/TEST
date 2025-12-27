@@ -9,10 +9,10 @@
     <application
         android:allowBackup="true"
         android:icon="@mipmap/greendragon"
-        android:label="Luke English"
+        android:label="LAT English"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.LukeDict"
+        android:theme="@style/Theme.LATDict"
         android:usesCleartextTraffic="false"
         tools:targetApi="m">
         <activity
@@ -61,7 +61,7 @@
         <activity
             android:name=".Main_menu"
             android:exported="false"
-            android:label="Luke English" />
+            android:label="LAT English" />
         <activity
             android:name=".loginPage"
             android:exported="false" />
@@ -71,10 +71,6 @@
         <activity
             android:name=".LoginActivity"
             android:exported="false" />
-        <activity
-            android:name=".UserManagementActivity"
-            android:exported="false"
-            android:label="用户管理" />
         <activity
             android:name=".MainActivity"
             android:exported="true">

@@ -666,9 +666,8 @@ public class SearchActivity extends AppCompatActivity {
                 wordBean = localResults.get(0);
             } else {
                 wordBean = new WordBean(word);
-                // 初始化默认值
-                wordBean.setUkPhonetic("暂无英音音标");
-                wordBean.setUsPhonetic("暂无美音音标");
+                // 音标字段已在构造方法中初始化为空字符串，无需额外设置
+                // 提示文本由展示层（WordDescActivity）统一处理
             }
             
             // 1. 调用百度翻译API获取中文翻译

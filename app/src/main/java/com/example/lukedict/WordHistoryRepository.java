@@ -370,7 +370,7 @@ public class WordHistoryRepository {
         word.setTran(cursor.getString(cursor.getColumnIndexOrThrow(WordHistoryDbHelper.COLUMN_TRANSLATION)));
         word.setPhonetic(cursor.getString(cursor.getColumnIndexOrThrow(WordHistoryDbHelper.COLUMN_PHONETIC)));
         word.setDesc(cursor.getString(cursor.getColumnIndexOrThrow(WordHistoryDbHelper.COLUMN_DEFINITION)));
-        word.setAudio(cursor.getString(cursor.getColumnIndexOrThrow(WordHistoryDbHelper.COLUMN_AUDIO_URL)));
+        word.setAudioUrl(cursor.getString(cursor.getColumnIndexOrThrow(WordHistoryDbHelper.COLUMN_AUDIO_URL)));
         // 可根据需要添加时间戳字段到WordBean
         return word;
     }
