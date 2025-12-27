@@ -1,19 +1,19 @@
 package com.example.lukedict;
 
-import java.util.List;
-
 import retrofit2.Call;
-import retrofit2.http.GET;
-import retrofit2.http.Query;
+import retrofit2.http.Field;
+import retrofit2.http.FormUrlEncoded;
+import retrofit2.http.POST;
 
 public interface BaiduTranslateApi {
-    @GET("api/trans/vip/translate")
+    @POST("api/trans/vip/translate")
+    @FormUrlEncoded
     Call<BaiduTranslateResponse> translate(
-            @Query("q") String query,
-            @Query("from") String from,
-            @Query("to") String to,
-            @Query("appid") String appid,
-            @Query("salt") String salt,
-            @Query("sign") String sign
+            @Field("q") String query,
+            @Field("from") String from,
+            @Field("to") String to,
+            @Field("appid") String appid,
+            @Field("salt") String salt,
+            @Field("sign") String sign
     );
 }

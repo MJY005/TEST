@@ -3,6 +3,7 @@ package com.example.lukedict;
 import android.content.Context;
 
 import retrofit2.Call;
+import retrofit2.Callback;
 import retrofit2.Response;
 
 public class WordRepository {
@@ -32,7 +33,7 @@ public class WordRepository {
         }
 
         // 本地没有，查询网络
-        remoteDataSource.getTranslation(word).enqueue(new Callback<BaiduTranslateResponse>() {
+        remoteDataSource.getTranslation(word).enqueue(new retrofit2.Callback<BaiduTranslateResponse>() {
             @Override
             public void onResponse(Call<BaiduTranslateResponse> call, Response<BaiduTranslateResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
@@ -41,8 +42,13 @@ public class WordRepository {
                         String translation = baiduTranslateResponse.getTransResult().get(0).getDst();
                         Word newWord = new Word(word, translation);
                         // 保存到本地数据库
-                        localDataSource.insertWord(newWord);
-                        callback.onSuccess(newWord);
+                        try {
+                            localDataSource.insertWord(newWord);
+                            callback.onSuccess(newWord);
+                        } catch (Exception e) {
+                            // 即使保存失败，也返回翻译结果，但记录错误
+                            callback.onSuccess(newWord);
+                        }
                     } else {
                         callback.onFailure(new Exception("No translation found"));
                     }

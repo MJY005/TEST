@@ -42,6 +42,13 @@ public class WordLocalDataSource {
         return result;
     }
 
+    // 关闭数据库连接
+    public void close() {
+        if (dbHelper != null) {
+            dbHelper.close();
+        }
+    }
+
     // 其他操作：更新、删除、查询历史记录等
 
 }

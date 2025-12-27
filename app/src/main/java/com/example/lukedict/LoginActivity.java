@@ -104,6 +104,7 @@ public class LoginActivity extends AppCompatActivity {
                         sp.edit().putBoolean("autologin",false).apply();
                     }
                     startActivity(new Intent(LoginActivity.this, Main_menu.class));
+                    finish(); // 关闭当前页面
                 });
             }
 

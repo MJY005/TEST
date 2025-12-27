@@ -13,7 +13,10 @@ public class AboutAdapter extends PagerAdapter {    //实现viewpager专用的�
     List<View> viewList;
 
     public AboutAdapter(List<View> viewList) {
-this.viewList = viewList;
+        if (viewList == null) {
+            throw new IllegalArgumentException("viewList cannot be null");
+        }
+        this.viewList = viewList;
     }
 
     @Override

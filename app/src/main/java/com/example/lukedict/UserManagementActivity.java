@@ -51,7 +51,7 @@ public class UserManagementActivity extends AppCompatActivity {
             @Override
             public void onError(Throwable e) {
                 runOnUiThread(() -> {
-                    Toast.makeText(UserManagementActivity.this, "加载用户失败：" + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(UserManagementActivity.this, "加载用户信息失败，请重试", Toast.LENGTH_SHORT).show();
                 });
             }
         });

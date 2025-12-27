@@ -1,21 +1,14 @@
 package com.example.lukedict;
 
 import retrofit2.Call;
-import retrofit2.Retrofit;
-import retrofit2.converter.gson.GsonConverterFactory;
 
 public class WordRemoteDataSource {
-    private static final String APP_ID = "7367498";
-    private static final String SECRET_KEY = "GqHxRVJqiM1zycfkAmbwLmq5MLpx2dFb";
-    private BaiduTranslateApi translateApi;
+    private static final String APP_ID = "20251226002527897";
+    private static final String SECRET_KEY = "2bQ5B2RfBc5D_9_oYIiB";
+    private RetrofitClient.BaiduTranslateApi translateApi;
 
     public WordRemoteDataSource() {
-        Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl("https://fanyi-api.baidu.com/")
-                .addConverterFactory(GsonConverterFactory.create())
-                .build();
-
-        translateApi = retrofit.create(BaiduTranslateApi.class);
+        translateApi = RetrofitClient.getBaiduTranslateApi();
     }
 
     public Call<BaiduTranslateResponse> getTranslation(String word) {

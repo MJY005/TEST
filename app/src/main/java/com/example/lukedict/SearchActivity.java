@@ -415,13 +415,13 @@ public class SearchActivity extends AppCompatActivity {
 
 
 
-    private void initViews() {
-        etWord = findViewById(R.id.et_word);
-        btnSearch = findViewById(R.id.btn_search);
-        progressBar = findViewById(R.id.progress_bar);
-        tvResult = findViewById(R.id.tv_result);
-        tvError = findViewById(R.id.tv_error);
-    }
+//    private void initViews() {
+//        etWord = findViewById(R.id.et_word);
+//        btnSearch = findViewById(R.id.btn_search);
+//        progressBar = findViewById(R.id.progress_bar);
+//        tvResult = findViewById(R.id.tv_result);
+//        tvError = findViewById(R.id.tv_error);
+//    }
 
     private void initViewModel() {
         viewModel = new ViewModelProvider(this, new ViewModelProvider.Factory() {
@@ -634,6 +634,20 @@ public class SearchActivity extends AppCompatActivity {
             loadingView.setVisibility(View.VISIBLE);
         }
 
+        /**
+         * 检查任务是否已取消，如果已取消则释放资源并返回true
+         */
+        private boolean checkCancelled() {
+            if (isCancelled()) {
+                if (translationCall != null) {
+                    translationCall.cancel();
+                    translationCall = null;
+                }
+                return true;
+            }
+            return false;
+        }
+
         @Override
         protected List<WordBean> doInBackground(String... params) {
             String word = params[0];
@@ -644,11 +658,11 @@ public class SearchActivity extends AppCompatActivity {
             // 使用百度翻译API获取中文翻译
             try {
                 // 检查任务是否已取消
-                if (isCancelled()) return localResults != null ? localResults : new ArrayList<>();
+                if (checkCancelled()) return localResults != null ? localResults : new ArrayList<>();
 
                 // 百度翻译API配置
-                String BAIDU_APP_ID = "7367498";
-                String BAIDU_SECRET_KEY = "GqHxRVJqiM1zycfkAmbwLmq5MLpx2dFb";
+                String BAIDU_APP_ID = "20251226002527897";
+                String BAIDU_SECRET_KEY = "2bQ5B2RfBc5D_9_oYIiB";
                 
                 // 检查是否已配置（修复：检查是否为占位符）
                 if (BAIDU_APP_ID == null || BAIDU_APP_ID.isEmpty() || 
@@ -660,37 +674,28 @@ public class SearchActivity extends AppCompatActivity {
                 }
                 
                 // 在执行网络请求前检查是否已取消
-                if (isCancelled()) {
+                if (checkCancelled()) {
                     return localResults != null ? localResults : new ArrayList<>();
                 }
                 
-                // 生成签名（百度翻译API要求）
-                String salt = String.valueOf(System.currentTimeMillis());
+                // 生成签名（百度翻译API要求）- 优化salt生成，增加随机数
+                String salt = System.currentTimeMillis() + "" + new java.util.Random().nextInt(1000);
                 String signStr = BAIDU_APP_ID + word + salt + BAIDU_SECRET_KEY;
                 String sign = MD5Utils.md5(signStr);
                 
                 // 调用百度翻译API
-                translationCall = RetrofitClient.getInstance()
-                        .getBaiduTranslateApi()
+                translationCall = RetrofitClient.getBaiduTranslateApi()
                         .translate(word, "en", "zh", BAIDU_APP_ID, salt, sign);
                 
                 // 再次检查是否已取消（在请求执行前）
-                if (isCancelled()) {
-                    if (translationCall != null) {
-                        translationCall.cancel();
-                        translationCall = null;
-                    }
+                if (checkCancelled()) {
                     return localResults != null ? localResults : new ArrayList<>();
                 }
                 
                 retrofit2.Response<BaiduTranslateResponse> response = translationCall.execute();
                 
                 // 请求完成后，检查是否已取消
-                if (isCancelled()) {
-                    if (translationCall != null) {
-                        translationCall.cancel();
-                        translationCall = null;
-                    }
+                if (checkCancelled()) {
                     return localResults != null ? localResults : new ArrayList<>();
                 }
                 
@@ -724,23 +729,32 @@ public class SearchActivity extends AppCompatActivity {
                     // 请求失败，释放资源
                     translationCall = null;
                     
+                    // 安全处理errorBody
                     String errorMsg = "未知错误";
-                    try {
-                        if (response.errorBody() != null) {
-                            errorMsg = response.errorBody().string();
+                    if (response.errorBody() != null) {
+                        try {
+                            java.io.InputStream inputStream = response.errorBody().byteStream();
+                            java.io.BufferedReader reader = new java.io.BufferedReader(
+                                    new java.io.InputStreamReader(inputStream, java.nio.charset.StandardCharsets.UTF_8));
+                            StringBuilder sb = new StringBuilder();
+                            String line;
+                            while ((line = reader.readLine()) != null) {
+                                sb.append(line);
+                            }
+                            errorMsg = sb.toString();
+                            reader.close();
+                            inputStream.close();
+                        } catch (java.io.IOException ex) {
+                            errorMsg = "读取错误信息失败";
+                            android.util.Log.w("SearchActivity", "读取错误信息失败", ex);
                         }
-                    } catch (Exception ex) {
-                        errorMsg = "读取错误信息失败";
                     }
                     android.util.Log.w("SearchActivity", "百度翻译API响应失败，状态码: " + response.code() + ", 错误: " + errorMsg);
                 }
             } catch (java.io.InterruptedIOException e) {
                 // 请求被中断（通常是任务被取消），这是正常情况，不需要记录错误
                 android.util.Log.d("SearchActivity", "翻译API请求被中断（任务已取消）");
-                if (translationCall != null) {
-                    translationCall.cancel();
-                    translationCall = null;
-                }
+                checkCancelled(); // 使用统一方法释放资源
             } catch (Exception e) {
                 // 网络请求失败，记录日志但不影响主流程
                 android.util.Log.w("SearchActivity", "翻译API请求失败，使用本地词库: " + e.getMessage());
@@ -748,8 +762,7 @@ public class SearchActivity extends AppCompatActivity {
             } finally {
                 // 任务取消时取消网络请求
                 if (isCancelled() && translationCall != null) {
-                    translationCall.cancel();
-                    translationCall = null;
+                    checkCancelled(); // 使用统一方法释放资源
                 }
             }
             
@@ -849,21 +862,34 @@ public class SearchActivity extends AppCompatActivity {
      */
     private String translateToChinese(String text) {
         try {
-            Call<BaiduTranslateResponse> call = RetrofitClient.getInstance()
-                    .getTranslationApi()
-                    .translate(text, "en", "zh");
+            // 百度翻译API配置
+            String BAIDU_APP_ID = "20251226002527897";
+            String BAIDU_SECRET_KEY = "2bQ5B2RfBc5D_9_oYIiB";
+            
+            // 生成签名
+            String salt = System.currentTimeMillis() + "" + new java.util.Random().nextInt(1000);
+            String signStr = BAIDU_APP_ID + text + salt + BAIDU_SECRET_KEY;
+            String sign = MD5Utils.md5(signStr);
+            
+            // 调用百度翻译API
+            Call<BaiduTranslateResponse> call = RetrofitClient.getBaiduTranslateApi()
+                    .translate(text, "en", "zh", BAIDU_APP_ID, salt, sign);
             Response<BaiduTranslateResponse> resp = call.execute();
             if (resp.isSuccessful() && resp.body() != null) {
-               BaiduTranslateResponse body = resp.body();
-                if (body.getResponseData() != null) {
-                    return body.getResponseData().getTranslatedText();
-                } else if (body.trans_result != null && !body.trans_result.isEmpty()) {
-                    return body.trans_result.get(0).getDst();
+                BaiduTranslateResponse body = resp.body();
+                // 检查是否有错误
+                if (body.getErrorCode() != null) {
+                    android.util.Log.w("SearchActivity", "百度翻译API错误: " + body.getErrorCode());
+                    return "";
+                }
+                // 使用getTransResult()方法获取翻译结果
+                if (body.getTransResult() != null && !body.getTransResult().isEmpty()) {
+                    return body.getTransResult().get(0).getDst();
                 }
             }
         } catch (Exception e) {
             // 翻译失败不影响主流程
-            e.printStackTrace();
+            android.util.Log.w("SearchActivity", "翻译失败", e);
         }
         return "";
     }

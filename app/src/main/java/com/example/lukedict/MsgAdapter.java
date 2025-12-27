@@ -44,19 +44,23 @@ public class MsgAdapter extends RecyclerView.Adapter<MsgAdapter.ViewHolder> {
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         ChatActivity.Msg msg = mMsgList.get(position);
-        if(msg.getType() == ChatActivity.Msg.TYPE_RECEIVED){
-        //如果是收到消息，则显示左边的消息布局，将右边的消息布局隐藏
-        holder.leftlayout.setVisibility(View.VISIBLE);
-        holder.rightlayout.setVisibility(View.GONE);
-        holder.leftMsg.setText(msg.getContent());
+        if (msg == null) return; // 避免空指针
+        
+        if (msg.getType() == ChatActivity.Msg.TYPE_RECEIVED) {
+            // 显示左边布局，隐藏右边
+            holder.leftlayout.setVisibility(View.VISIBLE);
+            holder.rightlayout.setVisibility(View.GONE);
+            holder.leftMsg.setText(msg.getContent());
+        } else if (msg.getType() == ChatActivity.Msg.TYPE_SENT) {
+            // 显示右边布局，隐藏左边
+            holder.rightlayout.setVisibility(View.VISIBLE);
+            holder.leftlayout.setVisibility(View.GONE);
+            holder.rightMsg.setText(msg.getContent());
+        } else {
+            // 处理未知类型，默认隐藏所有布局
+            holder.leftlayout.setVisibility(View.GONE);
+            holder.rightlayout.setVisibility(View.GONE);
         }
-        else if(msg.getType() == ChatActivity.Msg.TYPE_SENT){
-        //如果是发出的消息，则显示右边的消息布局，将左边的的消息布局隐藏
-        holder.rightlayout.setVisibility(View.VISIBLE);
-        holder.leftlayout.setVisibility(View.GONE);
-        holder.rightMsg.setText(msg.getContent());
-      }
-
     }
 
     @Override

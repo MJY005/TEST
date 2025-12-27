@@ -27,7 +27,10 @@ public class InfoListAdapter extends BaseAdapter {
 
     @Override
     public Object getItem(int position) {     //返回指定位置所对应的数据是什么
-        return mDatas.get(position);
+        if (position >= 0 && position < mDatas.size()) {
+            return mDatas.get(position);
+        }
+        return null;
     }
 
     @Override

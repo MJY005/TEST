@@ -6,79 +6,61 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     tools:context=".SearchActivity">
+
+    <!-- 搜索栏 -->
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="60dp"
         android:padding="10dp"
         android:background="@color/yellow">
+
+        <!-- 清空按钮 -->
         <ImageView
             android:id="@+id/info_iv_flush"
-            android:src="@mipmap/refreshicon"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignParentRight="true"
-            android:layout_centerVertical="true"/>
+            android:layout_centerVertical="true"
+            android:src="@mipmap/refreshicon"
+            android:contentDescription="清空" />
+
+        <!-- 搜索按钮 -->
         <ImageView
             android:id="@+id/info_iv_search"
-            android:src="@mipmap/searchicon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:layout_toLeftOf="@id/info_iv_flush"
             android:layout_centerVertical="true"
             android:layout_marginRight="20dp"
             android:layout_marginLeft="20dp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+            android:src="@mipmap/searchicon"
+            android:contentDescription="搜索" />
+
+        <!-- 搜索输入框 -->
         <EditText
             android:id="@+id/info_et_search"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
             android:layout_toLeftOf="@id/info_iv_search"
-            android:paddingLeft="20dp"
-            android:background="@drawable/info_et_bg"
             android:layout_centerVertical="true"
+            android:paddingLeft="20dp"
+            android:paddingRight="10dp"
+            android:background="@drawable/info_et_bg"
             android:backgroundTint="@color/white"
             android:textColor="@color/black"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"/>
-<!--        todo:-->
-
-        <EditText
-            android:id="@+id/et_word"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
             android:hint="请输入要查询的单词"
-            android:inputType="textCapWords"/>
+            android:inputType="text"
+            android:imeOptions="actionSearch" />
 
-        <Button
-            android:id="@+id/btn_search"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="查询"/>
-
-        <ProgressBar
-            android:id="@+id/progress_bar"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:visibility="gone"/>
-
-        <TextView
-            android:id="@+id/tv_result"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:textSize="18sp"/>
-
-        <TextView
-            android:id="@+id/tv_error"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:textColor="@color/red"
-            android:visibility="gone"/>
     </RelativeLayout>
+
+    <!-- 内容区域 -->
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1">
 
+        <!-- 搜索结果列表 -->
         <ListView
             android:id="@+id/infolist_lv"
             android:layout_width="match_parent"
@@ -86,6 +68,7 @@
             android:divider="@color/black"
             android:dividerHeight="1dp" />
 
+        <!-- 加载进度条 -->
         <ProgressBar
             android:id="@+id/search_progress"
             style="?android:attr/progressBarStyleLarge"
@@ -93,5 +76,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center"
             android:visibility="gone" />
+
     </FrameLayout>
+
 </LinearLayout>

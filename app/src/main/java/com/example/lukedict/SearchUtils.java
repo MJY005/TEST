@@ -114,16 +114,17 @@ private static final String[] trans = {
 
     /**
      * 本地模糊搜索，作为网络不可用时的兜底。
+     * 支持包含关键词的模糊搜索（不仅限于前缀匹配）。
      */
     public static List<WordBean> searchLocal(String keyword){
         List<WordBean> source = getAllWordLists();
         List<WordBean> result = new ArrayList<>();
-        if (keyword == null) {
+        if (keyword == null || keyword.isEmpty()) {
             return result;
         }
         String lower = keyword.toLowerCase();
         for (WordBean bean : source){
-            if (bean.getTitle().toLowerCase().startsWith(lower)){
+            if (bean.getTitle() != null && bean.getTitle().toLowerCase().contains(lower)){
                 result.add(bean);
             }
         }

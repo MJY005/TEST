@@ -11,6 +11,9 @@ public class WordApiResponse {
     private List<Phonetic> phonetics;
     private List<Meaning> meanings;
 
+    // 空构造函数（Gson需要）
+    public WordApiResponse() {}
+
     public String getWord() {
         return word;
     }
@@ -27,6 +30,9 @@ public class WordApiResponse {
         private String text;
         private String audio;
 
+        // 空构造函数（Gson需要）
+        public Phonetic() {}
+
         public String getText() {
             return text;
         }
@@ -40,6 +46,9 @@ public class WordApiResponse {
         private String partOfSpeech;
         private List<Definition> definitions;
 
+        // 空构造函数（Gson需要）
+        public Meaning() {}
+
         public String getPartOfSpeech() {
             return partOfSpeech;
         }
@@ -52,6 +61,9 @@ public class WordApiResponse {
     public static class Definition {
         private String definition;
         private String example;
+
+        // 空构造函数（Gson需要）
+        public Definition() {}
 
         public String getDefinition() {
             return definition;

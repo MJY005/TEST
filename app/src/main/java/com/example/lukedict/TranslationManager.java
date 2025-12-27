@@ -14,8 +14,8 @@ import retrofit2.Response;
 public class TranslationManager {
     private static final String TAG = "TranslationManager";
     // 百度翻译配置（建议后续移至安全存储）
-    private static final String APP_ID = "7367498";
-    private static final String SECRET_KEY = "GqHxRVJqiM1zycfkAmbwLmq5MLpx2dFb";
+    private static final String APP_ID = "20251226002527897";
+    private static final String SECRET_KEY = "2bQ5B2RfBc5D_9_oYIiB";
 
     // 翻译方法（适配百度翻译API）
     public void translate(String text, String from, String to, TranslationCallback callback) {
@@ -25,8 +25,7 @@ public class TranslationManager {
         String sign = generateSign(text, salt);
 
         // 调用百度翻译API（替换原MyMemory接口调用）
-        RetrofitClient.getInstance()
-                .getBaiduTranslateApi() // 改用百度翻译接口
+        RetrofitClient.getBaiduTranslateApi() // 改用百度翻译接口
                 .translate(text, from, to, APP_ID, salt, sign) // 百度要求的参数
                 .enqueue(new Callback<BaiduTranslateResponse>() { // 改用百度响应模型
                     @Override
@@ -76,9 +75,20 @@ public class TranslationManager {
         }
     }
 
-    // 回调接口保持不变
+    /**
+     * 翻译结果回调接口
+     */
     public interface TranslationCallback {
+        /**
+         * 翻译成功时回调
+         * @param translatedText 翻译后的文本
+         */
         void onSuccess(String translatedText);
+        
+        /**
+         * 翻译失败时回调
+         * @param e 失败原因异常
+         */
         void onError(Throwable e);
     }
 }
